@@ -2,7 +2,7 @@
   "name": "File Nest – Personal Vault",
   "short_name": "File Nest",
   "description": "Your personal vault for certificates, photos, and important documents.",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f0f17",
   "theme_color": "#6c63ff",
