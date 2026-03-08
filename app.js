@@ -282,7 +282,7 @@ function applySort() { state.sortField = document.getElementById('sortField').va
 function toggleSortDir() {
   state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
   const btn = document.getElementById('sortDirBtn');
-  btn.textContent = state.sortDir === 'asc' ? '↑' : '↓'; btn.classList.toggle('desc', state.sortDir === 'desc');
+  btn.classList.toggle('desc', state.sortDir === 'desc');
   saveState(); render();
 }
 
@@ -615,7 +615,7 @@ function syncUIControls() {
   document.getElementById({ large: 'viewLarge', medium: 'viewMedium', small: 'viewSmall' }[state.viewMode])?.classList.add('active');
   const sf = document.getElementById('sortField'); if (sf) sf.value = state.sortField;
   const sd = document.getElementById('sortDirBtn');
-  if (sd) { sd.textContent = state.sortDir === 'asc' ? '↑' : '↓'; sd.classList.toggle('desc', state.sortDir === 'desc'); }
+  if (sd) { sd.classList.toggle('desc', state.sortDir === 'desc'); }
 }
 
 let currentTheme = localStorage.getItem('theme') || 'dark';
