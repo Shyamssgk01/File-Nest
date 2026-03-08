@@ -430,6 +430,7 @@ function showCtxMenu(e, kind, folderId, fileId) {
     ${isFile ? `<div class="ctx-item" id="ctxView"   onclick="onCtxAction('view')">   👁 View</div>` : ''}
     <div class="ctx-item" id="ctxRename"   onclick="onCtxAction('rename')">  ✏️ Rename</div>
     <div class="ctx-item" id="ctxFav"      onclick="onCtxAction('favorite')">⭐ Favorite</div>
+    ${isFile ? `<div class="ctx-item" id="ctxShare"    onclick="onCtxAction('share')">🔗 Share</div>` : ''}
     ${isFile ? `<div class="ctx-item" id="ctxDownload" onclick="onCtxAction('download')">⬇ Download</div>` : ''}
     <div class="ctx-item ctx-danger" id="ctxDelete" onclick="onCtxAction('delete')">   🗑 Delete</div>
   `;
@@ -459,6 +460,7 @@ function onCtxAction(action) {
   else if (action === 'view') openFile(folderId, fileId);
   else if (action === 'rename') openRenameModal(kind, folderId, fileId);
   else if (action === 'favorite') toggleFavorite(kind, folderId, fileId);
+  else if (action === 'share') shareFile(folderId, fileId);
   else if (action === 'download') downloadFile(folderId, fileId);
   else if (action === 'delete') openDeleteModal(kind, folderId, fileId);
 }
@@ -533,6 +535,25 @@ function openFile(folderId, fileId) {
 }
 function closeLightbox() { closeModal('lightbox'); currentFileForLightbox = null; }
 function downloadCurrentFile() { if (currentFileForLightbox) downloadFile(currentFileForLightbox.folderId, currentFileForLightbox.file.id); }
+function shareCurrentFile() { if (currentFileForLightbox) shareFile(currentFileForLightbox.folderId, currentFileForLightbox.file.id); }
+
+async function shareFile(folderId, fileId) {
+  const file = (state.files[folderId] || []).find(f => f.id === fileId); if (!file) return;
+  try {
+    const response = await fetch(file.dataUrl);
+    const blob = await response.blob();
+    const shareObj = new File([blob], file.name, { type: file.type || '' });
+    if (navigator.canShare && navigator.canShare({ files: [shareObj] })) {
+      await navigator.share({ title: file.name, files: [shareObj] });
+    } else {
+      showToast('Native sharing not supported for this file.', 'warning');
+    }
+  } catch (err) {
+    console.error('Share error:', err);
+    showToast('Failed to share file.', 'warning');
+  }
+}
+
 function downloadFile(folderId, fileId) {
   const file = (state.files[folderId] || []).find(f => f.id === fileId); if (!file) return;
   const a = document.createElement('a'); a.href = file.dataUrl; a.download = file.name; a.click();
@@ -596,5 +617,30 @@ function syncUIControls() {
   const sd = document.getElementById('sortDirBtn');
   if (sd) { sd.textContent = state.sortDir === 'asc' ? '↑' : '↓'; sd.classList.toggle('desc', state.sortDir === 'desc'); }
 }
-function init() { loadState(); syncUIControls(); render(); }
+
+let currentTheme = localStorage.getItem('theme') || 'dark';
+
+function initTheme() {
+  if (currentTheme === 'light') {
+    document.body.classList.add('light-theme');
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) btn.innerHTML = '☀️';
+  }
+}
+
+function toggleTheme() {
+  const btn = document.getElementById('themeToggleBtn');
+  if (document.body.classList.contains('light-theme')) {
+    document.body.classList.remove('light-theme');
+    currentTheme = 'dark';
+    if (btn) btn.innerHTML = '🌙';
+  } else {
+    document.body.classList.add('light-theme');
+    currentTheme = 'light';
+    if (btn) btn.innerHTML = '☀️';
+  }
+  localStorage.setItem('theme', currentTheme);
+}
+
+function init() { loadState(); initTheme(); syncUIControls(); render(); }
 init();
