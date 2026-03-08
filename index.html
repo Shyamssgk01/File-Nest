@@ -89,6 +89,8 @@
           <button class="view-btn" id="viewSmall" title="Small icons (list)" onclick="setView('small')">≡</button>
         </div>
 
+        <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
+
         <!-- Sort controls -->
         <div class="sort-controls">
           <select id="sortField" onchange="applySort()" title="Sort by">
@@ -185,6 +187,7 @@
       <div class="lightbox-header">
         <span id="lightboxFileName" class="lb-title"></span>
         <div style="display:flex;gap:8px">
+          <button class="lb-btn" onclick="shareCurrentFile()" title="Share">🔗 Share</button>
           <button class="lb-btn" onclick="downloadCurrentFile()" title="Download">⬇ Download</button>
           <button class="lb-close" onclick="closeLightbox()">✕</button>
         </div>
@@ -199,6 +202,7 @@
     <div class="ctx-item" id="ctxView"> 👁 View</div>
     <div class="ctx-item" id="ctxRename"> ✏️ Rename</div>
     <div class="ctx-item" id="ctxFav"> ⭐ Favorite</div>
+    <div class="ctx-item" id="ctxShare"> 🔗 Share</div>
     <div class="ctx-item" id="ctxDownload">⬇ Download</div>
     <div class="ctx-item ctx-danger" id="ctxDelete">🗑 Delete</div>
   </div>
