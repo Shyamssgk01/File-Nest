@@ -1,35 +1,40 @@
 /* ═══════════════════════════════════════════════════════════
-   FILE NEST – app.js
+   FILE NEST – app.js  (v3 – robust context menu)
 ═══════════════════════════════════════════════════════════ */
 'use strict';
 
+/* ── Constants ──────────────────────────────────────────── */
 const FOLDER_TYPES = [
-  { key: 'photos',       label: 'Photos',       icon: '📷', accept: 'image/*' },
-  { key: 'videos',       label: 'Videos',       icon: '🎬', accept: 'video/*' },
-  { key: 'documents',    label: 'Documents',    icon: '📄', accept: '.doc,.docx,.txt,.odt' },
-  { key: 'pdfs',         label: 'PDFs',         icon: '📑', accept: '.pdf' },
+  { key: 'photos', label: 'Photos', icon: '📷', accept: 'image/*' },
+  { key: 'videos', label: 'Videos', icon: '🎬', accept: 'video/*' },
+  { key: 'documents', label: 'Documents', icon: '📄', accept: '.doc,.docx,.txt,.odt' },
+  { key: 'pdfs', label: 'PDFs', icon: '📑', accept: '.pdf' },
   { key: 'certificates', label: 'Certificates', icon: '🏅', accept: 'image/*,.pdf' },
-  { key: 'audio',        label: 'Audio',        icon: '🎵', accept: 'audio/*' },
+  { key: 'audio', label: 'Audio', icon: '🎵', accept: 'audio/*' },
   { key: 'spreadsheets', label: 'Spreadsheets', icon: '📊', accept: '.xls,.xlsx,.csv,.ods' },
-  { key: 'archives',     label: 'Archives',     icon: '🗜️', accept: '.zip,.rar,.7z,.tar,.gz' },
-  { key: 'private',      label: 'Private',      icon: '🔒', accept: '*' },
-  { key: 'other',        label: 'Other',        icon: '📁', accept: '*' },
+  { key: 'archives', label: 'Archives', icon: '🗜️', accept: '.zip,.rar,.7z,.tar,.gz' },
+  { key: 'private', label: 'Private', icon: '🔒', accept: '*' },
+  { key: 'other', label: 'Other', icon: '📁', accept: '*' },
 ];
-const FOLDER_EMOJIS = ['📁','🗂️','📂','🏅','📷','🎬','📄','📑','🎵','📊','🔒','🗃️','💼','🏠','✈️','🌟','💡','🎓','❤️','🔑'];
+const FOLDER_EMOJIS = ['📁', '🗂️', '📂', '🏅', '📷', '🎬', '📄', '📑', '🎵', '📊', '🔒', '🗃️', '💼', '🏠', '✈️', '🌟', '💡', '🎓', '❤️', '🔑'];
 const DEFAULT_FOLDERS = [
-  { id: 'df1', name: 'Photos',        type: 'photos',       icon: '📷', createdAt: Date.now() - 864000000 },
-  { id: 'df2', name: 'Documents',     type: 'documents',    icon: '📄', createdAt: Date.now() - 720000000 },
-  { id: 'df3', name: 'Certificates',  type: 'certificates', icon: '🏅', createdAt: Date.now() - 600000000 },
-  { id: 'df4', name: 'Private Vault', type: 'private',      icon: '🔒', createdAt: Date.now() - 500000000 },
-  { id: 'df5', name: 'Videos',        type: 'videos',       icon: '🎬', createdAt: Date.now() - 400000000 },
-  { id: 'df6', name: 'Important PDFs',type: 'pdfs',         icon: '📑', createdAt: Date.now() - 300000000 },
+  { id: 'df1', name: 'Photos', type: 'photos', icon: '📷', createdAt: Date.now() - 864000000 },
+  { id: 'df2', name: 'Documents', type: 'documents', icon: '📄', createdAt: Date.now() - 720000000 },
+  { id: 'df3', name: 'Certificates', type: 'certificates', icon: '🏅', createdAt: Date.now() - 600000000 },
+  { id: 'df4', name: 'Private Vault', type: 'private', icon: '🔒', createdAt: Date.now() - 500000000 },
+  { id: 'df5', name: 'Videos', type: 'videos', icon: '🎬', createdAt: Date.now() - 400000000 },
+  { id: 'df6', name: 'Important PDFs', type: 'pdfs', icon: '📑', createdAt: Date.now() - 300000000 },
 ];
 const STORAGE_KEY = 'filenest_state';
-const MAX_STORAGE  = 50 * 1024 * 1024;
+const MAX_STORAGE = 50 * 1024 * 1024;
 
+/* ── State ──────────────────────────────────────────────── */
 let state = { folders: [], files: {}, currentView: 'home', viewMode: 'large', sortField: 'name', sortDir: 'asc' };
 let folderModalMode = 'create', editFolderId = null, selectedType = 'other', selectedEmoji = '📁';
 let renameTarget = null, deleteTarget = null, currentFileForLightbox = null, searchQuery = '', deferredInstall = null;
+
+// The ONLY context-menu target store — written atomically, read in the same tick
+// by onFnAction() which is called inline from onclick attributes on each menu item.
 window._ctx = null;
 
 /* ═══════════════════ PERSISTENCE ═══════════════════════ */
@@ -59,53 +64,53 @@ function loadState() {
 function genId() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
 function formatBytes(b) {
   if (!b) return '0 B';
-  const k = 1024, s = ['B','KB','MB','GB'], i = Math.floor(Math.log(b)/Math.log(k));
-  return parseFloat((b/Math.pow(k,i)).toFixed(1)) + ' ' + s[i];
+  const k = 1024, s = ['B', 'KB', 'MB', 'GB'], i = Math.floor(Math.log(b) / Math.log(k));
+  return parseFloat((b / Math.pow(k, i)).toFixed(1)) + ' ' + s[i];
 }
-function formatDate(ts) { return new Date(ts).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }); }
+function formatDate(ts) { return new Date(ts).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); }
 function fileTypeIcon(n) {
-  const e = (n||'').split('.').pop().toLowerCase();
-  if (['jpg','jpeg','png','gif','webp','svg','bmp'].includes(e)) return '🖼️';
-  if (['mp4','webm','mkv','avi','mov'].includes(e)) return '🎬';
-  if (['mp3','wav','ogg','flac','aac'].includes(e)) return '🎵';
+  const e = (n || '').split('.').pop().toLowerCase();
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(e)) return '🖼️';
+  if (['mp4', 'webm', 'mkv', 'avi', 'mov'].includes(e)) return '🎬';
+  if (['mp3', 'wav', 'ogg', 'flac', 'aac'].includes(e)) return '🎵';
   if (e === 'pdf') return '📑';
-  if (['doc','docx','odt','txt','rtf'].includes(e)) return '📄';
-  if (['xls','xlsx','csv','ods'].includes(e)) return '📊';
-  if (['zip','rar','7z','tar','gz'].includes(e)) return '🗜️';
+  if (['doc', 'docx', 'odt', 'txt', 'rtf'].includes(e)) return '📄';
+  if (['xls', 'xlsx', 'csv', 'ods'].includes(e)) return '📊';
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(e)) return '🗜️';
   return '📎';
 }
 function isImage(n) { return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(n); }
 function isVideo(n) { return /\.(mp4|webm|mov|avi|mkv)$/i.test(n); }
 function isAudio(n) { return /\.(mp3|wav|ogg|flac|aac|m4a)$/i.test(n); }
-function isPdf(n)   { return /\.pdf$/i.test(n); }
-function totalStorageUsed() { return Object.values(state.files).flat().reduce((s,f) => s+(f.size||0), 0); }
-function totalFileCount()   { return Object.values(state.files).reduce((s,a) => s+a.length, 0); }
+function isPdf(n) { return /\.pdf$/i.test(n); }
+function totalStorageUsed() { return Object.values(state.files).flat().reduce((s, f) => s + (f.size || 0), 0); }
+function totalFileCount() { return Object.values(state.files).reduce((s, a) => s + a.length, 0); }
 
 /* ═══════════════════ SORT & FILTER ════════════════════ */
 function sortItems(arr) {
   const d = state.sortDir === 'asc' ? 1 : -1;
-  return [...arr].sort((a,b) => {
+  return [...arr].sort((a, b) => {
     if (state.sortField === 'name') return d * a.name.localeCompare(b.name);
-    if (state.sortField === 'date') return d * ((a.createdAt||0) - (b.createdAt||0));
-    if (state.sortField === 'size') return d * ((a.size||0) - (b.size||0));
+    if (state.sortField === 'date') return d * ((a.createdAt || 0) - (b.createdAt || 0));
+    if (state.sortField === 'size') return d * ((a.size || 0) - (b.size || 0));
     if (state.sortField === 'type') return d * a.name.split('.').pop().localeCompare(b.name.split('.').pop());
     return 0;
   });
 }
 function filterFolders(f) { return searchQuery ? f.filter(x => x.name.toLowerCase().includes(searchQuery)) : f; }
-function filterFiles(f)   { return searchQuery ? f.filter(x => x.name.toLowerCase().includes(searchQuery)) : f; }
+function filterFiles(f) { return searchQuery ? f.filter(x => x.name.toLowerCase().includes(searchQuery)) : f; }
 
 /* ═══════════════════ RENDER ═══════════════════════════ */
 function render() {
   updateSidebarFolders(); updateStorageBar(); updateBreadcrumb(); updateUploadBtn();
   const C = document.getElementById('content');
-  if      (state.currentView === 'home')      renderHome(C);
-  else if (state.currentView === 'recent')    renderRecent(C);
+  if (state.currentView === 'home') renderHome(C);
+  else if (state.currentView === 'recent') renderRecent(C);
   else if (state.currentView === 'favorites') renderFavorites(C);
-  else                                         renderFolder(C, state.currentView);
+  else renderFolder(C, state.currentView);
 
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const nb = { home:'navHome', recent:'navRecent', favorites:'navFavorites' }[state.currentView];
+  const nb = { home: 'navHome', recent: 'navRecent', favorites: 'navFavorites' }[state.currentView];
   if (nb) document.getElementById(nb)?.classList.add('active');
   document.querySelectorAll('.sidebar-folder-item').forEach(el => {
     el.classList.toggle('active', el.dataset.fid === state.currentView);
@@ -114,7 +119,7 @@ function render() {
 
 function renderHome(C) {
   const folders = sortItems(filterFolders(state.folders));
-  const fav = state.folders.filter(f=>f.favorite).length + Object.values(state.files).flat().filter(f=>f.favorite).length;
+  const fav = state.folders.filter(f => f.favorite).length + Object.values(state.files).flat().filter(f => f.favorite).length;
   C.innerHTML = `
     <div class="hero">
       <div class="hero-emoji">🪺</div>
@@ -160,8 +165,8 @@ function renderFolder(C, fid) {
 }
 
 function renderRecent(C) {
-  const all = Object.entries(state.files).flatMap(([fid,arr]) => arr.map(f => ({ ...f, _folderId: fid })));
-  all.sort((a,b) => b.createdAt - a.createdAt);
+  const all = Object.entries(state.files).flatMap(([fid, arr]) => arr.map(f => ({ ...f, _folderId: fid })));
+  all.sort((a, b) => b.createdAt - a.createdAt);
   const recent = filterFiles(all).slice(0, 60);
   C.innerHTML = `
     <div class="section-header"><span class="section-title">🕐 Recent Files</span><span class="section-count">${recent.length}</span></div>
@@ -172,7 +177,7 @@ function renderRecent(C) {
 
 function renderFavorites(C) {
   const ff = sortItems(filterFolders(state.folders.filter(f => f.favorite)));
-  const fi = Object.entries(state.files).flatMap(([fid,arr]) => arr.filter(f=>f.favorite).map(f => ({ ...f, _folderId: fid })));
+  const fi = Object.entries(state.files).flatMap(([fid, arr]) => arr.filter(f => f.favorite).map(f => ({ ...f, _folderId: fid })));
   C.innerHTML = `
     <div class="section-header"><span class="section-title">⭐ Favorite Folders</span><span class="section-count">${ff.length}</span></div>
     ${ff.length ? `<div class="items-grid view-${state.viewMode}" style="margin-bottom:28px">${ff.map(folderCard).join('')}</div>`
@@ -184,8 +189,9 @@ function renderFavorites(C) {
 
 /* ── Cards ──────────────────────────────────────────────── */
 function folderCard(f) {
-  const fc = (state.files[f.id]||[]).length;
-  const fsz = (state.files[f.id]||[]).reduce((s,x) => s+(x.size||0), 0);
+  const fc = (state.files[f.id] || []).length;
+  const fsz = (state.files[f.id] || []).reduce((s, x) => s + (x.size || 0), 0);
+  // The card click opens the folder. The ⋯ button calls showCtxMenu with folder data.
   return `<div class="item-card"
        onclick="navigateTo('${f.id}')"
        oncontextmenu="showCtxMenu(event,'folder','${f.id}',null)">
@@ -193,7 +199,7 @@ function folderCard(f) {
     <div class="item-icon-wrap"><div class="item-icon">${f.icon}</div></div>
     <div class="item-info">
       <div class="item-name" title="${f.name}">${f.name}</div>
-      <div class="item-meta">${fc} item${fc!==1?'s':''} · ${formatBytes(fsz)}</div>
+      <div class="item-meta">${fc} item${fc !== 1 ? 's' : ''} · ${formatBytes(fsz)}</div>
     </div>
     <button class="item-menu-btn"
       onclick="event.stopPropagation();showCtxMenu(event,'folder','${f.id}',null)">⋯</button>
@@ -229,7 +235,6 @@ function updateSidebarFolders() {
       <span class="nav-label" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span>
     </div>`).join('');
 }
-
 function updateBreadcrumb() {
   const bc = document.getElementById('breadcrumb'); if (!bc) return;
   const lbl = { home: null, recent: '🕐 Recent', favorites: '⭐ Favorites' }[state.currentView];
@@ -239,17 +244,15 @@ function updateBreadcrumb() {
     bc.innerHTML = `<span onclick="navigateTo('home')" style="cursor:pointer">🏠 Home</span><span class="bc-sep">›</span><span class="bc-home">${lbl}</span>`;
   } else {
     const folder = state.folders.find(f => f.id === state.currentView);
-    bc.innerHTML = `<span onclick="navigateTo('home')" style="cursor:pointer">🏠 Home</span><span class="bc-sep">›</span><span class="bc-home">${folder ? folder.icon+' '+folder.name : ''}</span>`;
+    bc.innerHTML = `<span onclick="navigateTo('home')" style="cursor:pointer">🏠 Home</span><span class="bc-sep">›</span><span class="bc-home">${folder ? folder.icon + ' ' + folder.name : ''}</span>`;
   }
 }
-
 function updateStorageBar() {
-  const used = totalStorageUsed(), pct = Math.min((used/MAX_STORAGE)*100, 100).toFixed(1);
+  const used = totalStorageUsed(), pct = Math.min((used / MAX_STORAGE) * 100, 100).toFixed(1);
   const fill = document.getElementById('storageFill'), label = document.getElementById('storageUsedLabel');
   if (fill) fill.style.width = pct + '%';
   if (label) label.textContent = formatBytes(used);
 }
-
 function updateUploadBtn() {
   const btn = document.getElementById('uploadBtnTop'); if (!btn) return;
   btn.style.display = state.folders.some(f => f.id === state.currentView) ? 'flex' : 'none';
@@ -260,73 +263,33 @@ function navigateTo(view) {
   state.currentView = view; searchQuery = '';
   const si = document.getElementById('searchInput'); if (si) si.value = '';
   const scb = document.getElementById('searchClearBtn'); if (scb) scb.style.display = 'none';
-  // Auto-close mobile sidebar on navigation
-  if (window.innerWidth <= 768) {
-    const sb = document.getElementById('sidebar');
-    const backdrop = document.getElementById('sidebarBackdrop');
-    sb.classList.remove('mobile-open');
-    if (backdrop) {
-      backdrop.classList.remove('active');
-      setTimeout(() => { backdrop.style.display = 'none'; }, 200);
-    }
-  }
   render();
 }
-
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
-  const backdrop = document.getElementById('sidebarBackdrop');
-  if (window.innerWidth <= 768) {
-    const isOpen = sb.classList.toggle('mobile-open');
-    if (backdrop) {
-      if (isOpen) {
-        backdrop.style.display = 'block';
-        requestAnimationFrame(() => backdrop.classList.add('active'));
-      } else {
-        backdrop.classList.remove('active');
-        setTimeout(() => { backdrop.style.display = 'none'; }, 200);
-      }
-    }
-  } else {
-    sb.classList.toggle('collapsed');
-  }
-}
-
-function closeSidebar() {
-  const sb = document.getElementById('sidebar');
-  const backdrop = document.getElementById('sidebarBackdrop');
-  if (window.innerWidth <= 768) {
-    sb.classList.remove('mobile-open');
-    if (backdrop) {
-      backdrop.classList.remove('active');
-      setTimeout(() => { backdrop.style.display = 'none'; }, 200);
-    }
-  } else {
-    // On desktop the ‹ button collapses the sidebar
-    sb.classList.toggle('collapsed');
-  }
+  if (window.innerWidth <= 768) sb.classList.toggle('mobile-open');
+  else sb.classList.toggle('collapsed');
 }
 
 /* ═══════════════════ VIEW / SORT ══════════════════════ */
 function setView(mode) {
   state.viewMode = mode;
   document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById({ large:'viewLarge', medium:'viewMedium', small:'viewSmall' }[mode])?.classList.add('active');
+  document.getElementById({ large: 'viewLarge', medium: 'viewMedium', small: 'viewSmall' }[mode])?.classList.add('active');
   saveState(); render();
 }
 function applySort() { state.sortField = document.getElementById('sortField').value; saveState(); render(); }
 function toggleSortDir() {
   state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
   const btn = document.getElementById('sortDirBtn');
-  btn.textContent = state.sortDir === 'asc' ? '↑' : '↓';
-  btn.classList.toggle('desc', state.sortDir === 'desc');
+  btn.textContent = state.sortDir === 'asc' ? '↑' : '↓'; btn.classList.toggle('desc', state.sortDir === 'desc');
   saveState(); render();
 }
 
 /* ═══════════════════ SEARCH ══════════════════════════ */
 function handleSearch(val) {
-  searchQuery = val.toLowerCase().trim();
-  document.getElementById('searchClearBtn').style.display = val ? 'block' : 'none';
+  searchQuery = val.trim().toLowerCase();
+  const cb = document.getElementById('searchClearBtn'); if (cb) cb.style.display = searchQuery ? 'flex' : 'none';
   render();
 }
 function clearSearch() {
@@ -388,7 +351,7 @@ function openRenameModal(kind, folderId, fileId) {
   renameTarget = { kind, folderId, fileId };
   let cur = kind === 'folder'
     ? (state.folders.find(f => f.id === folderId)?.name || '')
-    : ((state.files[folderId]||[]).find(f => f.id === fileId)?.name || '');
+    : ((state.files[folderId] || []).find(f => f.id === fileId)?.name || '');
   document.getElementById('renameInput').value = cur;
   openModal('renameModal');
   setTimeout(() => {
@@ -402,7 +365,7 @@ function confirmRename() {
   if (!renameTarget) return;
   const { kind, folderId, fileId } = renameTarget;
   if (kind === 'folder') { const f = state.folders.find(x => x.id === folderId); if (f) f.name = n; }
-  else { const f = (state.files[folderId]||[]).find(x => x.id === fileId); if (f) f.name = n; }
+  else { const f = (state.files[folderId] || []).find(x => x.id === fileId); if (f) f.name = n; }
   saveState(); closeRenameModal(); render(); showToast(`Renamed to "${n}".`, 'success');
 }
 function closeRenameModal() { renameTarget = null; closeModal('renameModal'); }
@@ -413,10 +376,10 @@ function openDeleteModal(kind, folderId, fileId) {
   let msg = '';
   if (kind === 'folder') {
     const f = state.folders.find(x => x.id === folderId);
-    const cnt = (state.files[folderId]||[]).length;
-    msg = `Delete folder "<strong>${f?.name}</strong>"? This will also delete ${cnt} file${cnt!==1?'s':''} inside it.`;
+    const cnt = (state.files[folderId] || []).length;
+    msg = `Delete folder "<strong>${f?.name}</strong>"? This will also delete ${cnt} file${cnt !== 1 ? 's' : ''} inside it.`;
   } else {
-    const f = (state.files[folderId]||[]).find(x => x.id === fileId);
+    const f = (state.files[folderId] || []).find(x => x.id === fileId);
     msg = `Delete file "<strong>${f?.name}</strong>"? This cannot be undone.`;
   }
   document.getElementById('deleteModalMsg').innerHTML = msg;
@@ -431,55 +394,78 @@ function confirmDelete() {
     if (state.currentView === folderId) navigateTo('home');
     showToast('Folder deleted.', 'success');
   } else {
-    state.files[folderId] = (state.files[folderId]||[]).filter(f => f.id !== fileId);
+    state.files[folderId] = (state.files[folderId] || []).filter(f => f.id !== fileId);
     showToast('File deleted.', 'success');
   }
   saveState(); closeDeleteModal(); render();
 }
 function closeDeleteModal() { deleteTarget = null; closeModal('deleteModal'); }
 
-/* ═══════════════════ CONTEXT MENU ════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   CONTEXT MENU  — v3 robust implementation
+   
+   Strategy: 
+   1. showCtxMenu() stores the target in window._ctx AND rebuilds
+      the menu innerHTML with fresh onclick="onCtxAction('...')" 
+      handlers baked into each item.
+   2. onCtxAction() reads window._ctx synchronously in the same
+      call stack as the user's click — no async race possible.
+   3. The menu div uses z-index:900 and pointer-events:all so 
+      clicks always land on it, not the card underneath.
+═══════════════════════════════════════════════════════ */
 function showCtxMenu(e, kind, folderId, fileId) {
   e.preventDefault();
   e.stopPropagation();
+
+  // Store target synchronously
   window._ctx = { kind, folderId, fileId };
+
   const isFolder = kind === 'folder';
-  const isFile   = kind === 'file';
+  const isFile = kind === 'file';
+
+  // Rebuild menu HTML inline so each item's onclick is self-contained
   const menu = document.getElementById('ctxMenu');
   menu.innerHTML = `
-    ${isFolder ? `<div class="ctx-item" onclick="onCtxAction('open')">📂 Open</div>` : ''}
-    ${isFile   ? `<div class="ctx-item" onclick="onCtxAction('view')">👁 View</div>` : ''}
-    <div class="ctx-item" onclick="onCtxAction('rename')">✏️ Rename</div>
-    <div class="ctx-item" onclick="onCtxAction('favorite')">⭐ Favorite</div>
-    ${isFile   ? `<div class="ctx-item" onclick="onCtxAction('download')">⬇ Download</div>` : ''}
-    <div class="ctx-item ctx-danger" onclick="onCtxAction('delete')">🗑 Delete</div>
+    ${isFolder ? `<div class="ctx-item" id="ctxOpen"   onclick="onCtxAction('open')">   📂 Open</div>` : ''}
+    ${isFile ? `<div class="ctx-item" id="ctxView"   onclick="onCtxAction('view')">   👁 View</div>` : ''}
+    <div class="ctx-item" id="ctxRename"   onclick="onCtxAction('rename')">  ✏️ Rename</div>
+    <div class="ctx-item" id="ctxFav"      onclick="onCtxAction('favorite')">⭐ Favorite</div>
+    ${isFile ? `<div class="ctx-item" id="ctxDownload" onclick="onCtxAction('download')">⬇ Download</div>` : ''}
+    <div class="ctx-item ctx-danger" id="ctxDelete" onclick="onCtxAction('delete')">   🗑 Delete</div>
   `;
+
+  // Position and show
   let x = e.clientX, y = e.clientY;
   menu.style.left = x + 'px'; menu.style.top = y + 'px';
   menu.classList.add('open');
+
+  // Clamp after paint
   requestAnimationFrame(() => {
     const r = menu.getBoundingClientRect();
-    if (x + r.width  > window.innerWidth)  x -= r.width;
+    if (x + r.width > window.innerWidth) x -= r.width;
     if (y + r.height > window.innerHeight) y -= r.height;
     menu.style.left = x + 'px'; menu.style.top = y + 'px';
   });
 }
 
 function onCtxAction(action) {
+  // Read synchronously — this is called directly from onclick
   const ctx = window._ctx;
   closeCtxMenu();
-  if (!ctx) return;
+  if (!ctx) { console.warn('No ctx target for action:', action); return; }
   const { kind, folderId, fileId } = ctx;
-  if      (action === 'open')     navigateTo(folderId);
-  else if (action === 'view')     openFile(folderId, fileId);
-  else if (action === 'rename')   openRenameModal(kind, folderId, fileId);
+  console.log('[CTX]', action, kind, folderId, fileId);
+  if (action === 'open') navigateTo(folderId);
+  else if (action === 'view') openFile(folderId, fileId);
+  else if (action === 'rename') openRenameModal(kind, folderId, fileId);
   else if (action === 'favorite') toggleFavorite(kind, folderId, fileId);
   else if (action === 'download') downloadFile(folderId, fileId);
-  else if (action === 'delete')   openDeleteModal(kind, folderId, fileId);
+  else if (action === 'delete') openDeleteModal(kind, folderId, fileId);
 }
 
 function closeCtxMenu() {
-  document.getElementById('ctxMenu')?.classList.remove('open');
+  const m = document.getElementById('ctxMenu');
+  if (m) m.classList.remove('open');
 }
 
 function toggleFavorite(kind, folderId, fileId) {
@@ -487,15 +473,18 @@ function toggleFavorite(kind, folderId, fileId) {
     const f = state.folders.find(x => x.id === folderId);
     if (f) { f.favorite = !f.favorite; showToast(f.favorite ? '⭐ Added to favorites' : 'Removed from favorites'); }
   } else {
-    const f = (state.files[folderId]||[]).find(x => x.id === fileId);
+    const f = (state.files[folderId] || []).find(x => x.id === fileId);
     if (f) { f.favorite = !f.favorite; showToast(f.favorite ? '⭐ Added to favorites' : 'Removed from favorites'); }
   }
   saveState(); render();
 }
 
+/* Close menu when clicking outside */
 document.addEventListener('click', e => {
   const m = document.getElementById('ctxMenu');
-  if (m && m.classList.contains('open') && !m.contains(e.target)) closeCtxMenu();
+  if (m && m.classList.contains('open') && !m.contains(e.target)) {
+    closeCtxMenu();
+  }
 });
 
 /* ═══════════════════ FILE UPLOAD ══════════════════════ */
@@ -505,15 +494,15 @@ function handleFileUpload(e) {
   if (!state.folders.some(f => f.id === fid)) { showToast('Open a folder first.', 'warning'); return; }
   processFiles(Array.from(e.target.files), fid); e.target.value = '';
 }
-function handleDragOver(e)  { e.preventDefault(); document.getElementById('dropZone')?.classList.add('drag-over'); }
-function handleDragLeave()  { document.getElementById('dropZone')?.classList.remove('drag-over'); }
+function handleDragOver(e) { e.preventDefault(); document.getElementById('dropZone')?.classList.add('drag-over'); }
+function handleDragLeave() { document.getElementById('dropZone')?.classList.remove('drag-over'); }
 function handleDrop(e, fid) {
   e.preventDefault(); document.getElementById('dropZone')?.classList.remove('drag-over');
   processFiles(Array.from(e.dataTransfer.files), fid);
 }
 function processFiles(fileList, folderId) {
   if (!fileList.length) return;
-  showToast(`Uploading ${fileList.length} file${fileList.length!==1?'s':''}…`);
+  showToast(`Uploading ${fileList.length} file${fileList.length !== 1 ? 's' : ''}…`);
   let done = 0;
   fileList.forEach(file => {
     const reader = new FileReader();
@@ -523,7 +512,7 @@ function processFiles(fileList, folderId) {
         id: genId(), name: file.name, size: file.size, type: file.type,
         dataUrl: ev.target.result, createdAt: Date.now(), favorite: false
       });
-      if (++done === fileList.length) { saveState(); render(); showToast(`${done} file${done!==1?'s':''} uploaded!`, 'success'); }
+      if (++done === fileList.length) { saveState(); render(); showToast(`${done} file${done !== 1 ? 's' : ''} uploaded!`, 'success'); }
     };
     reader.readAsDataURL(file);
   });
@@ -531,27 +520,27 @@ function processFiles(fileList, folderId) {
 
 /* ═══════════════════ FILE VIEWER ══════════════════════ */
 function openFile(folderId, fileId) {
-  const file = (state.files[folderId]||[]).find(f => f.id === fileId); if (!file) return;
+  const file = (state.files[folderId] || []).find(f => f.id === fileId); if (!file) return;
   currentFileForLightbox = { file, folderId };
   document.getElementById('lightboxFileName').textContent = file.name;
   const body = document.getElementById('lightboxBody');
-  if      (isImage(file.name)) body.innerHTML = `<img src="${file.dataUrl}" alt="${file.name}"/>`;
+  if (isImage(file.name)) body.innerHTML = `<img src="${file.dataUrl}" alt="${file.name}"/>`;
   else if (isVideo(file.name)) body.innerHTML = `<video controls src="${file.dataUrl}"></video>`;
   else if (isAudio(file.name)) body.innerHTML = `<div class="lb-generic"><div class="lb-generic-icon">🎵</div><div class="lb-generic-name">${file.name}</div><audio controls src="${file.dataUrl}" style="margin-top:16px;width:100%"></audio></div>`;
-  else if (isPdf(file.name))   body.innerHTML = `<iframe src="${file.dataUrl}" title="${file.name}"></iframe>`;
-  else body.innerHTML = `<div class="lb-generic"><div class="lb-generic-icon">${fileTypeIcon(file.name)}</div><div class="lb-generic-name">${file.name}</div><div class="lb-generic-size">${formatBytes(file.size)}</div><div style="margin-top:12px;color:var(--text3);font-size:.8rem">Preview not available.</div><button class="btn-primary" style="margin-top:16px" onclick="downloadCurrentFile()">⬇ Download</button></div>`;
+  else if (isPdf(file.name)) body.innerHTML = `<iframe src="${file.dataUrl}" title="${file.name}"></iframe>`;
+  else body.innerHTML = `<div class="lb-generic"><div class="lb-generic-icon">${fileTypeIcon(file.name)}</div><div class="lb-generic-name">${file.name}</div><div class="lb-generic-size">${formatBytes(file.size)}</div><div style="margin-top:12px;color:var(--text3);font-size:.8rem">Preview not available for this file type.</div><button class="btn-primary" style="margin-top:16px" onclick="downloadCurrentFile()">⬇ Download</button></div>`;
   openModal('lightbox');
 }
 function closeLightbox() { closeModal('lightbox'); currentFileForLightbox = null; }
 function downloadCurrentFile() { if (currentFileForLightbox) downloadFile(currentFileForLightbox.folderId, currentFileForLightbox.file.id); }
 function downloadFile(folderId, fileId) {
-  const file = (state.files[folderId]||[]).find(f => f.id === fileId); if (!file) return;
+  const file = (state.files[folderId] || []).find(f => f.id === fileId); if (!file) return;
   const a = document.createElement('a'); a.href = file.dataUrl; a.download = file.name; a.click();
   showToast(`Downloading "${file.name}"…`);
 }
 
 /* ═══════════════════ MODAL HELPERS ════════════════════ */
-function openModal(id)  { document.getElementById(id)?.classList.add('open'); }
+function openModal(id) { document.getElementById(id)?.classList.add('open'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
 
 /* ═══════════════════ TOAST ════════════════════════════ */
@@ -568,11 +557,11 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('folderModal')?.classList.contains('open')) saveFolderModal();
     if (document.getElementById('renameModal')?.classList.contains('open')) confirmRename();
   }
-  if ((e.ctrlKey||e.metaKey) && e.key === 'n') { e.preventDefault(); openCreateFolderModal(); }
-  if ((e.ctrlKey||e.metaKey) && e.key === 'u') { e.preventDefault(); triggerUpload(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); openCreateFolderModal(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'u') { e.preventDefault(); triggerUpload(); }
 });
 
-['folderModal','renameModal','deleteModal'].forEach(id => {
+['folderModal', 'renameModal', 'deleteModal'].forEach(id => {
   document.getElementById(id)?.addEventListener('click', e => { if (e.target.id === id) closeModal(id); });
 });
 document.getElementById('lightbox')?.addEventListener('click', e => { if (e.target.id === 'lightbox') closeLightbox(); });
@@ -596,13 +585,13 @@ function installApp() {
 }
 function dismissInstall() { document.getElementById('installBanner')?.classList.remove('show'); }
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
 }
 
 /* ═══════════════════ INIT ════════════════════════════ */
 function syncUIControls() {
   document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById({ large:'viewLarge', medium:'viewMedium', small:'viewSmall' }[state.viewMode])?.classList.add('active');
+  document.getElementById({ large: 'viewLarge', medium: 'viewMedium', small: 'viewSmall' }[state.viewMode])?.classList.add('active');
   const sf = document.getElementById('sortField'); if (sf) sf.value = state.sortField;
   const sd = document.getElementById('sortDirBtn');
   if (sd) { sd.textContent = state.sortDir === 'asc' ? '↑' : '↓'; sd.classList.toggle('desc', state.sortDir === 'desc'); }
