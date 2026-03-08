@@ -35,6 +35,31 @@
   --transition: .2s cubic-bezier(.4, 0, .2, 1);
 }
 
+.light-theme {
+  --bg: #f8fafc;
+  --bg2: #ffffff;
+  --bg3: #f1f5f9;
+  --surface: #e2e8f0;
+  --surface2: #cbd5e1;
+  --border: #cbd5e1;
+  --text: #0f172a;
+  --text2: #475569;
+  --text3: #64748b;
+  --accent: #6c63ff;
+  --accent2: #8b5cf6;
+  --accent-glow: rgba(108, 99, 255, 0.35);
+  --shadow: 0 8px 32px rgba(0, 0, 0, .08);
+}
+
+.light-theme .hero {
+  background: linear-gradient(135deg, rgba(108, 99, 255, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
+}
+
+.light-theme .nav-btn.active,
+.light-theme .sidebar-folder-item.active {
+  background: rgba(108, 99, 255, 0.1);
+}
+
 html {
   scroll-behavior: smooth;
 }
