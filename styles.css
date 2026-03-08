@@ -511,7 +511,7 @@ body {
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 0.9rem;
-  transition: background var(--transition), color var(--transition);
+  transition: background var(--transition), color var(--transition), transform var(--transition);
 }
 
 .sort-dir-btn:hover {
