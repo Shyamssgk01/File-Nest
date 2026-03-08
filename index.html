@@ -22,10 +22,10 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo">
-        <span class="logo-icon">🪺</span>
+        <img src="icon-192.png" class="logo-img" alt="File Nest logo" />
         <span class="logo-text">File Nest</span>
       </div>
-      <button class="sidebar-toggle" id="sidebarToggle" title="Collapse sidebar">‹</button>
+      <button class="sidebar-toggle" id="sidebarToggle" onclick="closeSidebar()" title="Collapse sidebar">‹</button>
     </div>
 
     <nav class="sidebar-nav">
@@ -59,6 +59,9 @@
       </div>
     </div>
   </aside>
+
+  <!-- Mobile sidebar backdrop -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
 
   <!-- ════════════════════ MAIN ════════════════════ -->
   <div class="main-wrapper" id="mainWrapper">
