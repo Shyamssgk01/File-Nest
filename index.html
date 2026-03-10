@@ -18,8 +18,105 @@
 
 <body>
 
+  <!-- ════════════════════ AUTH SCREEN ════════════════════ -->
+  <div id="authScreen" style="
+    position:fixed; inset:0; z-index:9999;
+    background:#0f0f17;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:24px;">
+
+    <div style="
+      background:#1a1a2e; border-radius:20px; padding:40px 32px;
+      max-width:400px; width:100%;
+      box-shadow:0 8px 40px rgba(0,0,0,.5); text-align:center;">
+
+      <div style="font-size:3rem; margin-bottom:12px;">🪺</div>
+      <h1 style="color:#fff; font-size:1.5rem; margin:0 0 6px">File Nest</h1>
+      <p style="color:#888; font-size:.9rem; margin:0 0 28px">Your personal vault</p>
+
+      <!-- Tabs -->
+      <div style="display:flex; background:#0f0f17; border-radius:10px; padding:4px; margin-bottom:24px;">
+        <button id="tabSignIn" onclick="switchTab('signin')" style="
+          flex:1; padding:8px; border:none; border-radius:8px; cursor:pointer;
+          background:#6c63ff; color:#fff; font-weight:600;
+          font-family:inherit; font-size:.9rem; transition:.2s;">Sign In</button>
+        <button id="tabSignUp" onclick="switchTab('signup')" style="
+          flex:1; padding:8px; border:none; border-radius:8px; cursor:pointer;
+          background:transparent; color:#888; font-weight:600;
+          font-family:inherit; font-size:.9rem; transition:.2s;">Sign Up</button>
+      </div>
+
+      <!-- Error box -->
+      <div id="authError" style="
+        display:none; background:#ff4d4d22; color:#ff6b6b;
+        border-radius:8px; padding:10px 14px;
+        margin-bottom:16px; font-size:.85rem; text-align:left;"></div>
+
+      <!-- Verify message -->
+      <div id="verifyMsg" style="
+        display:none; background:#6c63ff22; color:#a89fff;
+        border-radius:8px; padding:14px; margin-bottom:16px;
+        font-size:.88rem; line-height:1.6; text-align:left;">
+        📧 A verification email has been sent.<br>
+        Please check your inbox and click the link, then press
+        <strong>Continue</strong> below.
+      </div>
+
+      <!-- Email -->
+      <input id="authEmail" type="email" placeholder="Email address"
+        onkeydown="if(event.key==='Enter')document.getElementById('authPassword').focus()"
+        style="
+          width:100%; box-sizing:border-box; padding:12px 14px;
+          border-radius:10px; border:1px solid #333;
+          background:#0f0f17; color:#fff; font-size:.95rem;
+          font-family:inherit; margin-bottom:12px; outline:none;" />
+
+      <!-- Password -->
+      <input id="authPassword" type="password" placeholder="Password"
+        onkeydown="if(event.key==='Enter')handleAuth()"
+        style="
+          width:100%; box-sizing:border-box; padding:12px 14px;
+          border-radius:10px; border:1px solid #333;
+          background:#0f0f17; color:#fff; font-size:.95rem;
+          font-family:inherit; margin-bottom:20px; outline:none;" />
+
+      <!-- Main action button -->
+      <button id="authBtn" onclick="handleAuth()" style="
+        width:100%; padding:13px; border:none; border-radius:10px;
+        background:#6c63ff; color:#fff; font-size:1rem; font-weight:700;
+        font-family:inherit; cursor:pointer; transition:.2s;
+        margin-bottom:12px;">Sign In</button>
+
+      <!-- Continue button (shown after signup email sent) -->
+      <button id="continueBtn" onclick="checkVerification()" style="
+        display:none; width:100%; padding:13px; border:none; border-radius:10px;
+        background:#22c55e; color:#fff; font-size:1rem; font-weight:700;
+        font-family:inherit; cursor:pointer; margin-bottom:12px;">
+        ✓ Continue to App
+      </button>
+
+      <!-- Google -->
+      <button onclick="handleGoogle()" style="
+        width:100%; padding:12px; border:1px solid #333; border-radius:10px;
+        background:transparent; color:#ccc; font-size:.9rem;
+        font-family:inherit; cursor:pointer; transition:.2s;
+        display:flex; align-items:center; justify-content:center; gap:8px;">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+          style="width:18px;" />
+        Continue with Google
+      </button>
+
+      <!-- Switch tab hint -->
+      <p id="authSwitch" style="color:#666; font-size:.82rem; margin-top:20px;">
+        Don't have an account?
+        <span onclick="switchTab('signup')"
+          style="color:#6c63ff; cursor:pointer; font-weight:600;">Sign Up</span>
+      </p>
+    </div>
+  </div>
+
   <!-- ════════════════════ SIDEBAR ════════════════════ -->
-  <aside class="sidebar" id="sidebar">
+  <aside class="sidebar" id="sidebar" style="display:none;">
     <div class="sidebar-header">
       <div class="logo">
         <span class="logo-icon">🪺</span>
@@ -57,11 +154,21 @@
       <div class="storage-bar-track">
         <div class="storage-bar-fill" id="storageFill" style="width:0%"></div>
       </div>
+      <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);">
+        <button onclick="handleSignOut()" style="
+          width:100%; padding:8px; background:transparent;
+          border:1px solid #444; border-radius:8px; color:#888;
+          font-size:.78rem; cursor:pointer; font-family:inherit;
+          transition:.2s;" onmouseover="this.style.color='#ff6b6b';this.style.borderColor='#ff6b6b'"
+          onmouseout="this.style.color='#888';this.style.borderColor='#444'">
+          🚪 Sign Out
+        </button>
+      </div>
     </div>
   </aside>
 
   <!-- ════════════════════ MAIN ════════════════════ -->
-  <div class="main-wrapper" id="mainWrapper">
+  <div class="main-wrapper" id="mainWrapper" style="display:none;">
 
     <!-- TOP BAR -->
     <header class="topbar">
@@ -102,8 +209,8 @@
         </div>
 
         <button class="icon-btn" onclick="openCreateFolderModal()" title="New Folder">📁＋</button>
-        <button class="icon-btn" id="uploadBtnTop" onclick="triggerUpload()" title="Upload File" style="display:none">⬆
-          Upload</button>
+        <button class="icon-btn" id="uploadBtnTop" onclick="triggerUpload()" title="Upload File"
+          style="display:none">⬆ Upload</button>
       </div>
     </header>
 
@@ -128,14 +235,10 @@
           maxlength="60" />
 
         <label class="form-label" style="margin-top:16px">Folder Type</label>
-        <div class="type-grid" id="typeGrid">
-          <!-- injected by JS -->
-        </div>
+        <div class="type-grid" id="typeGrid"></div>
 
         <label class="form-label" style="margin-top:16px">Icon</label>
-        <div class="emoji-picker" id="emojiPicker">
-          <!-- injected by JS -->
-        </div>
+        <div class="emoji-picker" id="emojiPicker"></div>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeFolderModal()">Cancel</button>
@@ -195,15 +298,7 @@
   </div>
 
   <!-- Context Menu -->
-  <div class="ctx-menu" id="ctxMenu">
-    <div class="ctx-item" id="ctxOpen"> 📂 Open</div>
-    <div class="ctx-item" id="ctxView"> 👁 View</div>
-    <div class="ctx-item" id="ctxRename"> ✏️ Rename</div>
-    <div class="ctx-item" id="ctxFav"> ⭐ Favorite</div>
-    <div class="ctx-item" id="ctxShare"> 🔗 Share</div>
-    <div class="ctx-item" id="ctxDownload">⬇ Download</div>
-    <div class="ctx-item ctx-danger" id="ctxDelete">🗑 Delete</div>
-  </div>
+  <div class="ctx-menu" id="ctxMenu"></div>
 
   <!-- Toast -->
   <div class="toast-container" id="toastContainer"></div>
@@ -220,7 +315,8 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="auth.js"></script>
+  <script src="app.js" defer></script>
 </body>
 
 </html>
