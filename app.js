@@ -26,12 +26,14 @@ const DEFAULT_FOLDERS = [
   { id: 'df6', name: 'Important PDFs', type: 'pdfs', icon: '📑', createdAt: Date.now() - 300000000 },
 ];
 const STORAGE_KEY = 'filenest_state';
+const AUTH_KEY = 'filenest_auth';
 const MAX_STORAGE = 50 * 1024 * 1024;
 
 /* ── State ──────────────────────────────────────────────── */
 let state = { folders: [], files: {}, currentView: 'home', viewMode: 'large', sortField: 'name', sortDir: 'asc' };
 let folderModalMode = 'create', editFolderId = null, selectedType = 'other', selectedEmoji = '📁';
 let renameTarget = null, deleteTarget = null, currentFileForLightbox = null, searchQuery = '', deferredInstall = null;
+let pendingSignUp = null;
 
 // The ONLY context-menu target store — written atomically, read in the same tick
 // by onFnAction() which is called inline from onclick attributes on each menu item.
@@ -609,6 +611,124 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
 }
 
+/* ═══════════════════ AUTH LOGIC ═══════════════════════ */
+function initAuth() {
+  const authState = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
+  if (authState.loggedIn) {
+    showApp();
+  } else {
+    showAuth();
+    if (authState.registeredEmail) {
+      switchAuthView('login');
+    } else {
+      switchAuthView('signup');
+    }
+  }
+}
+
+function showAuth() {
+  document.getElementById('authOverlay').style.display = 'flex';
+  document.getElementById('appContent').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('authOverlay').style.display = 'none';
+  document.getElementById('appContent').style.display = 'flex';
+}
+
+function switchAuthView(viewName) {
+  document.getElementById('authLoginView').style.display = 'none';
+  document.getElementById('authSignupView').style.display = 'none';
+  document.getElementById('authVerifyView').style.display = 'none';
+
+  if (viewName === 'login') document.getElementById('authLoginView').style.display = 'block';
+  else if (viewName === 'signup') document.getElementById('authSignupView').style.display = 'block';
+  else if (viewName === 'verify') document.getElementById('authVerifyView').style.display = 'block';
+}
+
+function handleSignUp() {
+  const email = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPassword').value.trim();
+  
+  if (!email || !password) return;
+
+  const authState = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
+  if (authState.registeredEmail) {
+    alert('An account already exists. Only one user is allowed.');
+    switchAuthView('login');
+    return;
+  }
+
+  // Save pending credentials, generate fake code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  pendingSignUp = { email, password, code };
+  
+  switchAuthView('verify');
+  document.getElementById('verifyCode').value = '';
+  document.getElementById('verifyCode').focus();
+  
+  // Simulate email sending by showing an alert with the code
+  setTimeout(() => {
+    alert(`[Simulated Email] Your File Nest verification code is: ${code}`);
+  }, 1000);
+}
+
+function verifyEmail() {
+  const inputCode = document.getElementById('verifyCode').value.trim();
+  
+  if (!pendingSignUp) {
+    alert('Verification session expired. Please sign up again.');
+    switchAuthView('signup');
+    return;
+  }
+
+  if (inputCode !== pendingSignUp.code && inputCode !== '123456') { // Fallback '123456' for testing
+    alert('Invalid verification code.');
+    return;
+  }
+
+  // Registration successful
+  const newAuth = {
+    registeredEmail: pendingSignUp.email,
+    password: pendingSignUp.password, // Very insecure but works for client-side demo
+    loggedIn: true
+  };
+  localStorage.setItem(AUTH_KEY, JSON.stringify(newAuth));
+  pendingSignUp = null;
+  
+  showApp();
+}
+
+function handleLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value.trim();
+  
+  const authState = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
+  
+  if (!authState.registeredEmail) {
+    alert('No account found. Please sign up.');
+    switchAuthView('signup');
+    return;
+  }
+
+  if (authState.registeredEmail === email && authState.password === password) {
+    authState.loggedIn = true;
+    localStorage.setItem(AUTH_KEY, JSON.stringify(authState));
+    showApp();
+  } else {
+    alert('Invalid email or password.');
+  }
+}
+
+function logout() {
+  const authState = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
+  authState.loggedIn = false;
+  localStorage.setItem(AUTH_KEY, JSON.stringify(authState));
+  showAuth();
+  switchAuthView('login');
+  document.getElementById('loginPassword').value = '';
+}
+
 /* ═══════════════════ INIT ════════════════════════════ */
 function syncUIControls() {
   document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
@@ -642,5 +762,5 @@ function toggleTheme() {
   localStorage.setItem('theme', currentTheme);
 }
 
-function init() { loadState(); initTheme(); syncUIControls(); render(); }
+function init() { loadState(); initTheme(); syncUIControls(); render(); initAuth(); }
 init();
