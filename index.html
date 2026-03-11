@@ -9,7 +9,7 @@
     content="Your personal vault for certificates, photos, and important documents – all in one place." />
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#6c63ff" />
-  <link rel="icon" href="icon-192.png" />
+  <link rel="icon" href="icons/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -19,104 +19,54 @@
 <body>
 
   <!-- ════════════════════ AUTH SCREEN ════════════════════ -->
-  <div id="authScreen" style="
-    position:fixed; inset:0; z-index:9999;
-    background:#0f0f17;
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center; padding:24px;">
-
-    <div style="
-      background:#1a1a2e; border-radius:20px; padding:40px 32px;
-      max-width:400px; width:100%;
-      box-shadow:0 8px 40px rgba(0,0,0,.5); text-align:center;">
-
-      <div style="font-size:3rem; margin-bottom:12px;">🪺</div>
-      <h1 style="color:#fff; font-size:1.5rem; margin:0 0 6px">File Nest</h1>
-      <p style="color:#888; font-size:.9rem; margin:0 0 28px">Your personal vault</p>
-
-      <!-- Tabs -->
-      <div style="display:flex; background:#0f0f17; border-radius:10px; padding:4px; margin-bottom:24px;">
-        <button id="tabSignIn" onclick="switchTab('signin')" style="
-          flex:1; padding:8px; border:none; border-radius:8px; cursor:pointer;
-          background:#6c63ff; color:#fff; font-weight:600;
-          font-family:inherit; font-size:.9rem; transition:.2s;">Sign In</button>
-        <button id="tabSignUp" onclick="switchTab('signup')" style="
-          flex:1; padding:8px; border:none; border-radius:8px; cursor:pointer;
-          background:transparent; color:#888; font-weight:600;
-          font-family:inherit; font-size:.9rem; transition:.2s;">Sign Up</button>
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-box">
+      <div class="auth-logo">
+        <span class="auth-logo-icon">🪺</span>
+        <span class="auth-logo-text">File Nest</span>
+      </div>
+      
+      <!-- Login View -->
+      <div id="authLoginView">
+        <h2 class="auth-title">Welcome Back</h2>
+        <p class="auth-sub">Enter your credentials to access your vault.</p>
+        <form class="auth-form" onsubmit="event.preventDefault(); handleLogin();">
+          <input type="email" id="loginEmail" class="form-input" placeholder="Email Address" required />
+          <input type="password" id="loginPassword" class="form-input" placeholder="Password" required />
+          <button type="submit" class="btn-primary auth-submit">Log In</button>
+        </form>
+        <p class="auth-switch">Don't have an account? <span onclick="switchAuthView('signup')">Sign up</span></p>
       </div>
 
-      <!-- Error box -->
-      <div id="authError" style="
-        display:none; background:#ff4d4d22; color:#ff6b6b;
-        border-radius:8px; padding:10px 14px;
-        margin-bottom:16px; font-size:.85rem; text-align:left;"></div>
-
-      <!-- Verify message -->
-      <div id="verifyMsg" style="
-        display:none; background:#6c63ff22; color:#a89fff;
-        border-radius:8px; padding:14px; margin-bottom:16px;
-        font-size:.88rem; line-height:1.6; text-align:left;">
-        📧 A verification email has been sent.<br>
-        Please check your inbox and click the link, then press
-        <strong>Continue</strong> below.
+      <!-- Signup View -->
+      <div id="authSignupView" style="display:none;">
+        <h2 class="auth-title">Create Account</h2>
+        <p class="auth-sub">Setup your personal vault.</p>
+        <form class="auth-form" onsubmit="event.preventDefault(); handleSignUp();">
+          <input type="email" id="signupEmail" class="form-input" placeholder="Email Address" required />
+          <input type="password" id="signupPassword" class="form-input" placeholder="Password" required />
+          <button type="submit" class="btn-primary auth-submit">Sign Up</button>
+        </form>
+        <p class="auth-switch">Already have an account? <span onclick="switchAuthView('login')">Log in</span></p>
       </div>
 
-      <!-- Email -->
-      <input id="authEmail" type="email" placeholder="Email address"
-        onkeydown="if(event.key==='Enter')document.getElementById('authPassword').focus()"
-        style="
-          width:100%; box-sizing:border-box; padding:12px 14px;
-          border-radius:10px; border:1px solid #333;
-          background:#0f0f17; color:#fff; font-size:.95rem;
-          font-family:inherit; margin-bottom:12px; outline:none;" />
-
-      <!-- Password -->
-      <input id="authPassword" type="password" placeholder="Password"
-        onkeydown="if(event.key==='Enter')handleAuth()"
-        style="
-          width:100%; box-sizing:border-box; padding:12px 14px;
-          border-radius:10px; border:1px solid #333;
-          background:#0f0f17; color:#fff; font-size:.95rem;
-          font-family:inherit; margin-bottom:20px; outline:none;" />
-
-      <!-- Main action button -->
-      <button id="authBtn" onclick="handleAuth()" style="
-        width:100%; padding:13px; border:none; border-radius:10px;
-        background:#6c63ff; color:#fff; font-size:1rem; font-weight:700;
-        font-family:inherit; cursor:pointer; transition:.2s;
-        margin-bottom:12px;">Sign In</button>
-
-      <!-- Continue button (shown after signup email sent) -->
-      <button id="continueBtn" onclick="checkVerification()" style="
-        display:none; width:100%; padding:13px; border:none; border-radius:10px;
-        background:#22c55e; color:#fff; font-size:1rem; font-weight:700;
-        font-family:inherit; cursor:pointer; margin-bottom:12px;">
-        ✓ Continue to App
-      </button>
-
-      <!-- Google -->
-      <button onclick="handleGoogle()" style="
-        width:100%; padding:12px; border:1px solid #333; border-radius:10px;
-        background:transparent; color:#ccc; font-size:.9rem;
-        font-family:inherit; cursor:pointer; transition:.2s;
-        display:flex; align-items:center; justify-content:center; gap:8px;">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-          style="width:18px;" />
-        Continue with Google
-      </button>
-
-      <!-- Switch tab hint -->
-      <p id="authSwitch" style="color:#666; font-size:.82rem; margin-top:20px;">
-        Don't have an account?
-        <span onclick="switchTab('signup')"
-          style="color:#6c63ff; cursor:pointer; font-weight:600;">Sign Up</span>
-      </p>
+      <!-- Verify View -->
+      <div id="authVerifyView" style="display:none;">
+        <h2 class="auth-title">Verify Email</h2>
+        <p class="auth-sub">Enter the 6-digit code sent to your email.</p>
+        <form class="auth-form" onsubmit="event.preventDefault(); verifyEmail();">
+          <input type="text" id="verifyCode" class="form-input" placeholder="123456" maxlength="6" required style="text-align:center; letter-spacing:4px; font-size:1.2rem;" />
+          <button type="submit" class="btn-primary auth-submit">Verify</button>
+        </form>
+      </div>
     </div>
   </div>
 
+  <!-- ════════════════════ MAIN APP ════════════════════ -->
+  <div id="appContent" style="display:none; width:100%; height:100vh;">
+
   <!-- ════════════════════ SIDEBAR ════════════════════ -->
-  <aside class="sidebar" id="sidebar" style="display:none;">
+  <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="logo">
         <span class="logo-icon">🪺</span>
@@ -154,21 +104,14 @@
       <div class="storage-bar-track">
         <div class="storage-bar-fill" id="storageFill" style="width:0%"></div>
       </div>
-      <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border);">
-        <button onclick="handleSignOut()" style="
-          width:100%; padding:8px; background:transparent;
-          border:1px solid #444; border-radius:8px; color:#888;
-          font-size:.78rem; cursor:pointer; font-family:inherit;
-          transition:.2s;" onmouseover="this.style.color='#ff6b6b';this.style.borderColor='#ff6b6b'"
-          onmouseout="this.style.color='#888';this.style.borderColor='#444'">
-          🚪 Sign Out
-        </button>
-      </div>
+      <button class="nav-btn" style="margin-top:16px; justify-content:center; color:var(--red);" onclick="logout()">
+        <span class="nav-icon">🚪</span><span class="nav-label">Logout</span>
+      </button>
     </div>
   </aside>
 
   <!-- ════════════════════ MAIN ════════════════════ -->
-  <div class="main-wrapper" id="mainWrapper" style="display:none;">
+  <div class="main-wrapper" id="mainWrapper">
 
     <!-- TOP BAR -->
     <header class="topbar">
@@ -189,6 +132,7 @@
       </div>
 
       <div class="topbar-right">
+        <!-- View toggles -->
         <div class="view-toggles">
           <button class="view-btn active" id="viewLarge" title="Large icons" onclick="setView('large')">⊞</button>
           <button class="view-btn" id="viewMedium" title="Medium icons" onclick="setView('medium')">⊟</button>
@@ -197,6 +141,7 @@
 
         <button class="icon-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
 
+        <!-- Sort controls -->
         <div class="sort-controls">
           <select id="sortField" onchange="applySort()" title="Sort by">
             <option value="name">Name</option>
@@ -209,8 +154,8 @@
         </div>
 
         <button class="icon-btn" onclick="openCreateFolderModal()" title="New Folder">📁＋</button>
-        <button class="icon-btn" id="uploadBtnTop" onclick="triggerUpload()" title="Upload File"
-          style="display:none">⬆ Upload</button>
+        <button class="icon-btn" id="uploadBtnTop" onclick="triggerUpload()" title="Upload File" style="display:none">⬆
+          Upload</button>
       </div>
     </header>
 
@@ -235,10 +180,14 @@
           maxlength="60" />
 
         <label class="form-label" style="margin-top:16px">Folder Type</label>
-        <div class="type-grid" id="typeGrid"></div>
+        <div class="type-grid" id="typeGrid">
+          <!-- injected by JS -->
+        </div>
 
         <label class="form-label" style="margin-top:16px">Icon</label>
-        <div class="emoji-picker" id="emojiPicker"></div>
+        <div class="emoji-picker" id="emojiPicker">
+          <!-- injected by JS -->
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeFolderModal()">Cancel</button>
@@ -298,7 +247,15 @@
   </div>
 
   <!-- Context Menu -->
-  <div class="ctx-menu" id="ctxMenu"></div>
+  <div class="ctx-menu" id="ctxMenu">
+    <div class="ctx-item" id="ctxOpen"> 📂 Open</div>
+    <div class="ctx-item" id="ctxView"> 👁 View</div>
+    <div class="ctx-item" id="ctxRename"> ✏️ Rename</div>
+    <div class="ctx-item" id="ctxFav"> ⭐ Favorite</div>
+    <div class="ctx-item" id="ctxShare"> 🔗 Share</div>
+    <div class="ctx-item" id="ctxDownload">⬇ Download</div>
+    <div class="ctx-item ctx-danger" id="ctxDelete">🗑 Delete</div>
+  </div>
 
   <!-- Toast -->
   <div class="toast-container" id="toastContainer"></div>
@@ -315,8 +272,9 @@
     </div>
   </div>
 
-  <script type="module" src="auth.js"></script>
-  <script src="app.js" defer></script>
+  </div> <!-- End App Content -->
+
+  <script src="app.js"></script>
 </body>
 
 </html>
