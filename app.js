@@ -251,6 +251,12 @@ function updateSidebarFolders() {
 }
 function updateBreadcrumb() {
   const bc = document.getElementById('breadcrumb'); if (!bc) return;
+  const backBtn = document.getElementById('backBtn');
+  const isHome = state.currentView === 'home';
+
+  // Show back button when not on home
+  if (backBtn) backBtn.style.display = isHome ? 'none' : 'flex';
+
   const lbl = { home: null, recent: '🕐 Recent', favorites: '⭐ Favorites' }[state.currentView];
   if (state.currentView === 'home') {
     bc.innerHTML = `<span class="bc-home" onclick="navigateTo('home')">🏠 Home</span>`;
@@ -290,7 +296,11 @@ function updateUploadBtn() {
 }
 
 /* ═══════════════════ NAVIGATION ══════════════════════ */
-function navigateTo(view) {
+
+// Track whether we're handling a popstate to avoid double-pushing history
+let _handlingPopState = false;
+
+function navigateTo(view, fromPopState = false) {
   // If we are currently inside a private vault and navigating somewhere else, lock it.
   const currentFolder = state.folders.find(f => f.id === state.currentView);
   if (currentFolder && currentFolder.type === 'private' && view !== state.currentView) {
@@ -306,16 +316,53 @@ function navigateTo(view) {
       return;
     }
   }
-  
+
+  // Push browser history entry so back button works
+  if (!fromPopState) {
+    const url = '#' + view;
+    if (state.currentView !== view) {
+      history.pushState({ view }, '', url);
+    }
+  }
+
   state.currentView = view; searchQuery = '';
   const si = document.getElementById('searchInput'); if (si) si.value = '';
   const scb = document.getElementById('searchClearBtn'); if (scb) scb.style.display = 'none';
+
+  // Close sidebar on mobile after navigation
+  if (window.innerWidth <= 768) {
+    const sb = document.getElementById('sidebar');
+    if (sb) sb.classList.remove('mobile-open');
+    // Remove overlay if present
+    const ov = document.getElementById('sidebarOverlay');
+    if (ov) ov.classList.remove('active');
+  }
+
   render();
 }
+
+// Handle browser back / forward buttons
+window.addEventListener('popstate', (e) => {
+  const view = (e.state && e.state.view) ? e.state.view : 'home';
+  navigateTo(view, true);
+});
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
-  if (window.innerWidth <= 768) sb.classList.toggle('mobile-open');
-  else sb.classList.toggle('collapsed');
+  if (window.innerWidth <= 768) {
+    sb.classList.toggle('mobile-open');
+    // Toggle overlay
+    let ov = document.getElementById('sidebarOverlay');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'sidebarOverlay';
+      ov.className = 'sidebar-overlay';
+      ov.onclick = () => { sb.classList.remove('mobile-open'); ov.classList.remove('active'); };
+      document.body.appendChild(ov);
+    }
+    ov.classList.toggle('active', sb.classList.contains('mobile-open'));
+  } else {
+    sb.classList.toggle('collapsed');
+  }
 }
 
 /* ═══════════════════ VIEW / SORT ══════════════════════ */
@@ -491,8 +538,9 @@ function saveNewPin() {
   showToast('Vault secured & unlocked!', 'success');
   closeModal('setupPinModal');
   if (pendingVaultTarget) {
-    navigateTo(pendingVaultTarget);
+    const t = pendingVaultTarget;
     pendingVaultTarget = null;
+    navigateTo(t);
   }
 }
 
@@ -510,8 +558,9 @@ function unlockVault() {
     document.getElementById('authPinInput').value = '';
     closeModal('authPinModal');
     if (pendingVaultTarget) {
-      navigateTo(pendingVaultTarget);
+      const t = pendingVaultTarget;
       pendingVaultTarget = null;
+      navigateTo(t);
     }
   } else {
     showToast('Incorrect PIN.', 'error');
@@ -787,7 +836,13 @@ function init() {
   localStorage.removeItem('filenest_state');
   loadState(); 
   initTheme(); 
-  syncUIControls(); 
+  syncUIControls();
+
+  // Seed initial history state so back button always has a 'home' to return to
+  const initView = location.hash ? location.hash.slice(1) : 'home';
+  history.replaceState({ view: 'home' }, '', '#home');
+  state.currentView = 'home';
+
   render(); 
 }
 init();
