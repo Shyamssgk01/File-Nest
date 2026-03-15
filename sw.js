@@ -3,7 +3,7 @@
    Caches shell for offline use
 ═══════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'filenest-v5';
+const CACHE_NAME = 'filenest-v6';
 const SHELL_ASSETS = [
     '/',
     '/index.html',
