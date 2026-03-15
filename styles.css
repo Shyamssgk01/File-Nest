@@ -1378,6 +1378,51 @@ body {
   }
 }
 
+/* ════════════════════ BACK BUTTON ════════════════════ */
+.back-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text2);
+  cursor: pointer;
+  font-size: 1.4rem;
+  font-weight: 600;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0;
+}
+
+.back-btn:hover {
+  background: var(--surface2);
+  color: var(--accent2);
+  border-color: var(--accent);
+}
+
+.back-btn:active {
+  transform: scale(0.93);
+}
+
+/* Sidebar overlay for mobile */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 199;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.sidebar-overlay.active {
+  display: block;
+}
+
 /* ════════════════════ RESPONSIVE ════════════════════ */
 @media (max-width: 768px) {
   :root {
@@ -1521,24 +1566,59 @@ body {
   line-height: 1;
 }
 
-/* ════════════════════ RESPONSIVE ════════════════════ */
+/* ════════════════════ RESPONSIVE (mobile improvements) ════════════════════ */
 @media (max-width: 768px) {
   .sidebar {
-    position: absolute;
-    left: -100%;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform var(--transition);
     z-index: 1000;
+    height: 100%;
   }
   .sidebar.mobile-open {
-    left: 0;
+    transform: translateX(0);
   }
   .main-wrapper {
     margin-left: 0;
+    width: 100%;
   }
   .menu-hamburger {
-    display: block;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    font-size: 1.3rem;
+  }
+  /* Show search on mobile via a second row */
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px 14px;
+    gap: 8px;
+  }
+  .topbar-left {
+    flex: 1;
+    min-width: 0;
   }
   .topbar-center {
-    display: none;
+    order: 3;
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  .topbar-right {
+    gap: 6px;
+  }
+  .sort-controls select {
+    max-width: 80px;
+    font-size: 0.75rem;
+  }
+  .icon-btn {
+    padding: 6px 8px;
+    font-size: 0.78rem;
   }
   .view-toggles {
     display: none;
@@ -1546,7 +1626,7 @@ body {
   .hero {
     flex-direction: column;
     text-align: center;
-    padding: 24px 16px;
+    padding: 20px 16px;
     gap: 12px;
   }
   .stats-row {
@@ -1556,7 +1636,7 @@ body {
     width: calc(50% - 6px);
   }
   .content {
-    padding: 16px;
+    padding: 14px;
   }
   .drop-zone {
     display: none !important;
@@ -1567,6 +1647,36 @@ body {
   .mobile-fab.show-fab {
     display: flex;
   }
+  /* Larger touch targets for item cards */
+  .item-card {
+    min-height: 70px;
+  }
+  .item-menu-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1.1rem;
+  }
+  /* Modal improvements */
+  .modal {
+    margin: 16px;
+    max-height: calc(100vh - 32px);
+  }
+  /* Lightbox fullscreen on mobile */
+  .lightbox-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+  /* Breadcrumb truncation */
+  .breadcrumb {
+    max-width: 180px;
+    overflow: hidden;
+  }
+  /* Toast bottom offset for FAB */
+  .toast-container {
+    bottom: 90px;
+    right: 16px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1574,12 +1684,19 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   }
   .stat-card {
-    width: 100%;
+    width: calc(50% - 6px);
   }
   .hero-title {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
   }
   .hero-emoji {
     font-size: 2.5rem;
   }
+  .topbar-right .sort-controls {
+    display: none;
+  }
+  .breadcrumb {
+    max-width: 140px;
+  }
 }
+
