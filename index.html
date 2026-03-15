@@ -10,6 +10,13 @@
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#6c63ff" />
   <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-512.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="File Nest" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -67,6 +74,7 @@
     <header class="topbar">
       <div class="topbar-left">
         <button class="menu-hamburger" onclick="toggleSidebar()" title="Toggle sidebar">☰</button>
+        <button class="back-btn" id="backBtn" onclick="history.back()" title="Go back" style="display:none">‹</button>
         <div class="breadcrumb" id="breadcrumb">
           <span onclick="navigateTo('home')" class="bc-home">🏠 Home</span>
         </div>
