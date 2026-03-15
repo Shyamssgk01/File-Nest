@@ -18,53 +18,6 @@
 
 <body>
 
-  <!-- ════════════════════ AUTH SCREEN ════════════════════ -->
-  <div class="auth-overlay" id="authOverlay">
-    <div class="auth-box">
-      <div class="auth-logo">
-        <span class="auth-logo-icon">🪺</span>
-        <span class="auth-logo-text">File Nest</span>
-      </div>
-      
-      <!-- Login View -->
-      <div id="authLoginView">
-        <h2 class="auth-title">Welcome Back</h2>
-        <p class="auth-sub">Enter your credentials to access your vault.</p>
-        <form class="auth-form" onsubmit="event.preventDefault(); handleLogin();">
-          <input type="email" id="loginEmail" class="form-input" placeholder="Email Address" required />
-          <input type="password" id="loginPassword" class="form-input" placeholder="Password" required />
-          <button type="submit" class="btn-primary auth-submit">Log In</button>
-        </form>
-        <p class="auth-switch">Don't have an account? <span onclick="switchAuthView('signup')">Sign up</span></p>
-      </div>
-
-      <!-- Signup View -->
-      <div id="authSignupView" style="display:none;">
-        <h2 class="auth-title">Create Account</h2>
-        <p class="auth-sub">Setup your personal vault.</p>
-        <form class="auth-form" onsubmit="event.preventDefault(); handleSignUp();">
-          <input type="email" id="signupEmail" class="form-input" placeholder="Email Address" required />
-          <input type="password" id="signupPassword" class="form-input" placeholder="Password" required />
-          <button type="submit" class="btn-primary auth-submit">Sign Up</button>
-        </form>
-        <p class="auth-switch">Already have an account? <span onclick="switchAuthView('login')">Log in</span></p>
-      </div>
-
-      <!-- Verify View -->
-      <div id="authVerifyView" style="display:none;">
-        <h2 class="auth-title">Verify Email</h2>
-        <p class="auth-sub">Enter the 6-digit code sent to your email.</p>
-        <form class="auth-form" onsubmit="event.preventDefault(); verifyEmail();">
-          <input type="text" id="verifyCode" class="form-input" placeholder="123456" maxlength="6" required style="text-align:center; letter-spacing:4px; font-size:1.2rem;" />
-          <button type="submit" class="btn-primary auth-submit">Verify</button>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- ════════════════════ MAIN APP ════════════════════ -->
-  <div id="appContent" style="display:none; width:100%; height:100vh;">
-
   <!-- ════════════════════ SIDEBAR ════════════════════ -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -104,9 +57,6 @@
       <div class="storage-bar-track">
         <div class="storage-bar-fill" id="storageFill" style="width:0%"></div>
       </div>
-      <button class="nav-btn" style="margin-top:16px; justify-content:center; color:var(--red);" onclick="logout()">
-        <span class="nav-icon">🚪</span><span class="nav-label">Logout</span>
-      </button>
     </div>
   </aside>
 
@@ -154,8 +104,8 @@
         </div>
 
         <button class="icon-btn" onclick="openCreateFolderModal()" title="New Folder">📁＋</button>
-        <button class="icon-btn" id="uploadBtnTop" onclick="triggerUpload()" title="Upload File" style="display:none">⬆
-          Upload</button>
+        <button class="icon-btn" id="uploadBtnTop" onclick="triggerUpload()" title="Upload File" style="display:none">⬆ Upload</button>
+        <button class="icon-btn" id="addLinkBtnTop" onclick="openAddLinkModal()" title="Add Link" style="display:none">🔗 Add Link</button>
       </div>
     </header>
 
@@ -163,6 +113,11 @@
     <main class="content" id="content">
       <!-- Rendered by JS -->
     </main>
+
+    <!-- Mobile FAB -->
+    <button class="mobile-fab" id="mobileFab" onclick="handleMobileFabClick()" style="display:none" title="Add">
+      <span class="fab-icon">＋</span>
+    </button>
   </div>
 
   <!-- ════════════════════ MODALS ════════════════════ -->
@@ -192,6 +147,26 @@
       <div class="modal-footer">
         <button class="btn-secondary" onclick="closeFolderModal()">Cancel</button>
         <button class="btn-primary" onclick="saveFolderModal()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Link Modal -->
+  <div class="modal-overlay" id="linkModal">
+    <div class="modal modal--sm">
+      <div class="modal-header">
+        <h2>Add Link</h2>
+        <button class="modal-close" onclick="closeLinkModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">URL</label>
+        <input class="form-input" type="url" id="linkUrlInput" placeholder="https://example.com" />
+        <label class="form-label" style="margin-top:16px">Link Title (Optional)</label>
+        <input class="form-input" type="text" id="linkTitleInput" placeholder="e.g. My Website" maxlength="120" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeLinkModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveLinkModal()">Save Link</button>
       </div>
     </div>
   </div>
@@ -231,6 +206,46 @@
     </div>
   </div>
 
+  <!-- Setup PIN Modal -->
+  <div class="modal-overlay" id="setupPinModal">
+    <div class="modal modal--sm">
+      <div class="modal-header">
+        <h2>Setup Vault PIN</h2>
+        <button class="modal-close" onclick="closeSetupPinModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.9rem; color:var(--text2); margin-bottom:16px;">This Private Vault is unprotected. Set a PIN to secure it.</p>
+        <label class="form-label">Create PIN</label>
+        <input class="form-input" type="password" id="newPinInput" placeholder="Enter a secure PIN" />
+        <label class="form-label" style="margin-top:16px">Confirm PIN</label>
+        <input class="form-input" type="password" id="confirmPinInput" placeholder="Confirm your PIN" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeSetupPinModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveNewPin()">Set PIN & Unlock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth/Unlock Vault Modal -->
+  <div class="modal-overlay" id="authPinModal">
+    <div class="modal modal--sm">
+      <div class="modal-header">
+        <h2>Unlock Vault</h2>
+        <button class="modal-close" onclick="closeAuthPinModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.9rem; color:var(--text2); margin-bottom:16px;">Enter your PIN to view private folders.</p>
+        <label class="form-label">PIN</label>
+        <input class="form-input" type="password" id="authPinInput" placeholder="Enter PIN" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeAuthPinModal()">Cancel</button>
+        <button class="btn-primary" onclick="unlockVault()">Unlock</button>
+      </div>
+    </div>
+  </div>
+
   <!-- File Viewer / Lightbox -->
   <div class="lightbox-overlay" id="lightbox">
     <div class="lightbox-container">
@@ -249,7 +264,6 @@
   <!-- Context Menu -->
   <div class="ctx-menu" id="ctxMenu">
     <div class="ctx-item" id="ctxOpen"> 📂 Open</div>
-    <div class="ctx-item" id="ctxView"> 👁 View</div>
     <div class="ctx-item" id="ctxRename"> ✏️ Rename</div>
     <div class="ctx-item" id="ctxFav"> ⭐ Favorite</div>
     <div class="ctx-item" id="ctxShare"> 🔗 Share</div>
@@ -271,8 +285,6 @@
       <button class="btn-secondary" onclick="dismissInstall()">Not Now</button>
     </div>
   </div>
-
-  </div> <!-- End App Content -->
 
   <script src="app.js"></script>
 </body>
