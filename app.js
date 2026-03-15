@@ -6,34 +6,35 @@
 /* ── Constants ──────────────────────────────────────────── */
 const FOLDER_TYPES = [
   { key: 'photos', label: 'Photos', icon: '📷', accept: 'image/*' },
-  { key: 'videos', label: 'Videos', icon: '🎬', accept: 'video/*' },
   { key: 'documents', label: 'Documents', icon: '📄', accept: '.doc,.docx,.txt,.odt' },
   { key: 'pdfs', label: 'PDFs', icon: '📑', accept: '.pdf' },
   { key: 'certificates', label: 'Certificates', icon: '🏅', accept: 'image/*,.pdf' },
   { key: 'audio', label: 'Audio', icon: '🎵', accept: 'audio/*' },
   { key: 'spreadsheets', label: 'Spreadsheets', icon: '📊', accept: '.xls,.xlsx,.csv,.ods' },
   { key: 'archives', label: 'Archives', icon: '🗜️', accept: '.zip,.rar,.7z,.tar,.gz' },
+  { key: 'links', label: 'Links', icon: '🔗', accept: 'url' },
   { key: 'private', label: 'Private', icon: '🔒', accept: '*' },
   { key: 'other', label: 'Other', icon: '📁', accept: '*' },
 ];
-const FOLDER_EMOJIS = ['📁', '🗂️', '📂', '🏅', '📷', '🎬', '📄', '📑', '🎵', '📊', '🔒', '🗃️', '💼', '🏠', '✈️', '🌟', '💡', '🎓', '❤️', '🔑'];
+const FOLDER_EMOJIS = ['📁', '🗂️', '📂', '🏅', '📷', '📄', '📑', '🎵', '📊', '🔒', '🗃️', '💼', '🏠', '✈️', '🌟', '💡', '🎓', '❤️', '🔑'];
 const DEFAULT_FOLDERS = [
   { id: 'df1', name: 'Photos', type: 'photos', icon: '📷', createdAt: Date.now() - 864000000 },
   { id: 'df2', name: 'Documents', type: 'documents', icon: '📄', createdAt: Date.now() - 720000000 },
   { id: 'df3', name: 'Certificates', type: 'certificates', icon: '🏅', createdAt: Date.now() - 600000000 },
-  { id: 'df4', name: 'Private Vault', type: 'private', icon: '🔒', createdAt: Date.now() - 500000000 },
-  { id: 'df5', name: 'Videos', type: 'videos', icon: '🎬', createdAt: Date.now() - 400000000 },
   { id: 'df6', name: 'Important PDFs', type: 'pdfs', icon: '📑', createdAt: Date.now() - 300000000 },
+  { id: 'df5', name: 'Saved Links', type: 'links', icon: '🔗', createdAt: Date.now() - 400000000 },
+  { id: 'df4', name: 'Private Vault', type: 'private', icon: '🔒', createdAt: Date.now() - 500000000 },
 ];
 const STORAGE_KEY = 'filenest_state';
-const AUTH_KEY = 'filenest_auth';
-const MAX_STORAGE = 50 * 1024 * 1024;
+const MAX_STORAGE = 50 * 1024 * 1024; // 50MB UI limit
+
+let vaultUnlocked = false;
+let pendingVaultTarget = null;
 
 /* ── State ──────────────────────────────────────────────── */
 let state = { folders: [], files: {}, currentView: 'home', viewMode: 'large', sortField: 'name', sortDir: 'asc' };
 let folderModalMode = 'create', editFolderId = null, selectedType = 'other', selectedEmoji = '📁';
 let renameTarget = null, deleteTarget = null, currentFileForLightbox = null, searchQuery = '', deferredInstall = null;
-let pendingSignUp = null;
 
 // The ONLY context-menu target store — written atomically, read in the same tick
 // by onFnAction() which is called inline from onclick attributes on each menu item.
@@ -73,7 +74,6 @@ function formatDate(ts) { return new Date(ts).toLocaleDateString('en-IN', { day:
 function fileTypeIcon(n) {
   const e = (n || '').split('.').pop().toLowerCase();
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(e)) return '🖼️';
-  if (['mp4', 'webm', 'mkv', 'avi', 'mov'].includes(e)) return '🎬';
   if (['mp3', 'wav', 'ogg', 'flac', 'aac'].includes(e)) return '🎵';
   if (e === 'pdf') return '📑';
   if (['doc', 'docx', 'odt', 'txt', 'rtf'].includes(e)) return '📄';
@@ -82,11 +82,23 @@ function fileTypeIcon(n) {
   return '📎';
 }
 function isImage(n) { return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(n); }
-function isVideo(n) { return /\.(mp4|webm|mov|avi|mkv)$/i.test(n); }
 function isAudio(n) { return /\.(mp3|wav|ogg|flac|aac|m4a)$/i.test(n); }
 function isPdf(n) { return /\.pdf$/i.test(n); }
-function totalStorageUsed() { return Object.values(state.files).flat().reduce((s, f) => s + (f.size || 0), 0); }
-function totalFileCount() { return Object.values(state.files).reduce((s, a) => s + a.length, 0); }
+
+function getVisibleFolders() {
+  if (vaultUnlocked) return state.folders;
+  return state.folders.filter(f => f.type !== 'private');
+}
+function getVisibleFilesList() {
+  const privateFolderIds = new Set(state.folders.filter(f => f.type === 'private').map(f => f.id));
+  return Object.entries(state.files).flatMap(([fid, arr]) => {
+    if (!vaultUnlocked && privateFolderIds.has(fid)) return [];
+    return arr.map(f => ({ ...f, _folderId: fid }));
+  });
+}
+
+function totalStorageUsed() { return getVisibleFilesList().reduce((s, f) => s + (f.size || 0), 0); }
+function totalFileCount() { return getVisibleFilesList().length; }
 
 /* ═══════════════════ SORT & FILTER ════════════════════ */
 function sortItems(arr) {
@@ -121,7 +133,7 @@ function render() {
 
 function renderHome(C) {
   const folders = sortItems(filterFolders(state.folders));
-  const fav = state.folders.filter(f => f.favorite).length + Object.values(state.files).flat().filter(f => f.favorite).length;
+  const fav = getVisibleFolders().filter(f => f.favorite).length + getVisibleFilesList().filter(f => f.favorite).length;
   C.innerHTML = `
     <div class="hero">
       <div class="hero-emoji">🪺</div>
@@ -150,24 +162,24 @@ function renderFolder(C, fid) {
   const files = sortItems(filterFiles(state.files[fid] || []));
   const ti = FOLDER_TYPES.find(t => t.key === folder.type) || FOLDER_TYPES[9];
   C.innerHTML = `
-    <div class="drop-zone" id="dropZone"
+    ${ti.key === 'links' ? '' : `<div class="drop-zone" id="dropZone"
       ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event,'${fid}')">
       <div class="drop-zone-icon">⬆</div>
       <div>Drag &amp; drop files here, or <strong style="color:var(--accent2);cursor:pointer" onclick="triggerUpload()">browse</strong></div>
       <div style="font-size:.75rem;margin-top:4px;color:var(--text3)">Accepted: ${ti.accept === '*' ? 'all files' : ti.accept}</div>
-    </div>
+    </div>`}
     <div class="section-header">
       <span class="section-title">${folder.icon} ${folder.name}</span>
-      <span class="section-count">${files.length} file${files.length !== 1 ? 's' : ''}</span>
+      <span class="section-count">${files.length} item${files.length !== 1 ? 's' : ''}</span>
     </div>
     ${files.length
       ? `<div class="items-grid view-${state.viewMode}">${files.map(f => fileCard(f, fid)).join('')}</div>`
-      : `<div class="empty-state"><div class="empty-icon">${folder.icon}</div><div class="empty-title">This folder is empty</div><div class="empty-sub">Upload files to "${folder.name}".</div><button class="btn-primary" onclick="triggerUpload()">⬆ Upload Files</button></div>`}`;
-  document.getElementById('fileInput').accept = ti.accept;
+      : `<div class="empty-state"><div class="empty-icon">${folder.icon}</div><div class="empty-title">This folder is empty</div><div class="empty-sub">${ti.key === 'links' ? 'Add links to "' + folder.name + '".' : 'Upload files to "' + folder.name + '".'}</div><button class="btn-primary" onclick="${ti.key === 'links' ? 'openAddLinkModal()' : 'triggerUpload()'}">${ti.key === 'links' ? '🔗 Add Link' : '⬆ Upload Files'}</button></div>`}`;
+  if (ti.key !== 'links') document.getElementById('fileInput').accept = ti.accept;
 }
 
 function renderRecent(C) {
-  const all = Object.entries(state.files).flatMap(([fid, arr]) => arr.map(f => ({ ...f, _folderId: fid })));
+  const all = getVisibleFilesList();
   all.sort((a, b) => b.createdAt - a.createdAt);
   const recent = filterFiles(all).slice(0, 60);
   C.innerHTML = `
@@ -178,8 +190,8 @@ function renderRecent(C) {
 }
 
 function renderFavorites(C) {
-  const ff = sortItems(filterFolders(state.folders.filter(f => f.favorite)));
-  const fi = Object.entries(state.files).flatMap(([fid, arr]) => arr.filter(f => f.favorite).map(f => ({ ...f, _folderId: fid })));
+  const ff = sortItems(filterFolders(getVisibleFolders().filter(f => f.favorite)));
+  const fi = getVisibleFilesList().filter(f => f.favorite);
   C.innerHTML = `
     <div class="section-header"><span class="section-title">⭐ Favorite Folders</span><span class="section-count">${ff.length}</span></div>
     ${ff.length ? `<div class="items-grid view-${state.viewMode}" style="margin-bottom:28px">${ff.map(folderCard).join('')}</div>`
@@ -209,10 +221,10 @@ function folderCard(f) {
 }
 
 function fileCard(f, folderId) {
-  const isImg = isImage(f.name);
+  const isImg = isImage(f.name) && !f.isLink;
   const icon = isImg && f.dataUrl
     ? `<img class="item-thumbnail" src="${f.dataUrl}" alt="${f.name}" loading="lazy"/>`
-    : `<div class="item-icon">${fileTypeIcon(f.name)}</div>`;
+    : `<div class="item-icon">${f.isLink ? '🔗' : fileTypeIcon(f.name)}</div>`;
   const ext = f.name.split('.').pop().toUpperCase();
   return `<div class="item-card"
        onclick="openFile('${folderId}','${f.id}')"
@@ -256,12 +268,45 @@ function updateStorageBar() {
   if (label) label.textContent = formatBytes(used);
 }
 function updateUploadBtn() {
-  const btn = document.getElementById('uploadBtnTop'); if (!btn) return;
-  btn.style.display = state.folders.some(f => f.id === state.currentView) ? 'flex' : 'none';
+  const btn = document.getElementById('uploadBtnTop');
+  const linkBtn = document.getElementById('addLinkBtnTop');
+  const fab = document.getElementById('mobileFab');
+  const folder = state.folders.find(f => f.id === state.currentView);
+
+  if (folder) {
+    if (fab) fab.classList.add('show-fab');
+    if (folder.type === 'links') {
+      if (btn) btn.style.display = 'none';
+      if (linkBtn) linkBtn.style.display = 'flex';
+    } else {
+      if (btn) btn.style.display = 'flex';
+      if (linkBtn) linkBtn.style.display = 'none';
+    }
+  } else {
+    if (btn) btn.style.display = 'none';
+    if (linkBtn) linkBtn.style.display = 'none';
+    if (fab) fab.classList.remove('show-fab');
+  }
 }
 
 /* ═══════════════════ NAVIGATION ══════════════════════ */
 function navigateTo(view) {
+  // If we are currently inside a private vault and navigating somewhere else, lock it.
+  const currentFolder = state.folders.find(f => f.id === state.currentView);
+  if (currentFolder && currentFolder.type === 'private' && view !== state.currentView) {
+    vaultUnlocked = false; 
+  }
+
+  if (view !== 'home' && view !== 'recent' && view !== 'favorites') {
+    const folder = state.folders.find(f => f.id === view);
+    if (folder && folder.type === 'private' && !vaultUnlocked) {
+      pendingVaultTarget = view;
+      if (localStorage.getItem('filenest_vault_pin')) openModal('authPinModal');
+      else openModal('setupPinModal');
+      return;
+    }
+  }
+  
   state.currentView = view; searchQuery = '';
   const si = document.getElementById('searchInput'); if (si) si.value = '';
   const scb = document.getElementById('searchClearBtn'); if (scb) scb.style.display = 'none';
@@ -403,6 +448,76 @@ function confirmDelete() {
 }
 function closeDeleteModal() { deleteTarget = null; closeModal('deleteModal'); }
 
+/* ═══════════════════ ADD LINK MODAL ═══════════════════ */
+function openAddLinkModal() {
+  document.getElementById('linkUrlInput').value = '';
+  document.getElementById('linkTitleInput').value = '';
+  openModal('linkModal');
+  setTimeout(() => document.getElementById('linkUrlInput').focus(), 180);
+}
+function closeLinkModal() { closeModal('linkModal'); }
+function saveLinkModal() {
+  let url = document.getElementById('linkUrlInput').value.trim();
+  const title = document.getElementById('linkTitleInput').value.trim() || url;
+  if (!url) { showToast('Please enter a URL.', 'warning'); return; }
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+  const fid = state.currentView;
+  if (!state.files[fid]) state.files[fid] = [];
+  state.files[fid].push({
+    id: genId(), name: title, size: 0, type: 'url',
+    dataUrl: url, createdAt: Date.now(), favorite: false, isLink: true
+  });
+  saveState(); closeLinkModal(); render(); showToast('Link added!', 'success');
+}
+
+/* ═══════════════════ PRIVATE VAULT MODALS ═════════════ */
+function closeSetupPinModal() {
+  pendingVaultTarget = null;
+  document.getElementById('newPinInput').value = '';
+  document.getElementById('confirmPinInput').value = '';
+  closeModal('setupPinModal');
+}
+function saveNewPin() {
+  const p1 = document.getElementById('newPinInput').value;
+  const p2 = document.getElementById('confirmPinInput').value;
+  if (!p1 || p1.length < 4) return showToast('PIN must be at least 4 characters.', 'warning');
+  if (p1 !== p2) return showToast('PINs do not match.', 'error');
+  
+  localStorage.setItem('filenest_vault_pin', p1);
+  vaultUnlocked = true;
+  document.getElementById('newPinInput').value = '';
+  document.getElementById('confirmPinInput').value = '';
+  showToast('Vault secured & unlocked!', 'success');
+  closeModal('setupPinModal');
+  if (pendingVaultTarget) {
+    navigateTo(pendingVaultTarget);
+    pendingVaultTarget = null;
+  }
+}
+
+function closeAuthPinModal() {
+  pendingVaultTarget = null;
+  document.getElementById('authPinInput').value = '';
+  closeModal('authPinModal');
+}
+function unlockVault() {
+  const p = document.getElementById('authPinInput').value;
+  const saved = localStorage.getItem('filenest_vault_pin');
+  if (p === saved) {
+    vaultUnlocked = true;
+    showToast('Vault unlocked!', 'success');
+    document.getElementById('authPinInput').value = '';
+    closeModal('authPinModal');
+    if (pendingVaultTarget) {
+      navigateTo(pendingVaultTarget);
+      pendingVaultTarget = null;
+    }
+  } else {
+    showToast('Incorrect PIN.', 'error');
+  }
+}
+
 /* ═══════════════════════════════════════════════════════
    CONTEXT MENU  — v3 robust implementation
    
@@ -427,14 +542,19 @@ function showCtxMenu(e, kind, folderId, fileId) {
 
   // Rebuild menu HTML inline so each item's onclick is self-contained
   const menu = document.getElementById('ctxMenu');
+  let isPrivate = false;
+  if (isFolder) {
+    const f = state.folders.find(x => x.id === folderId);
+    if (f && f.type === 'private') isPrivate = true;
+  }
+
   menu.innerHTML = `
     ${isFolder ? `<div class="ctx-item" id="ctxOpen"   onclick="onCtxAction('open')">   📂 Open</div>` : ''}
-    ${isFile ? `<div class="ctx-item" id="ctxView"   onclick="onCtxAction('view')">   👁 View</div>` : ''}
     <div class="ctx-item" id="ctxRename"   onclick="onCtxAction('rename')">  ✏️ Rename</div>
     <div class="ctx-item" id="ctxFav"      onclick="onCtxAction('favorite')">⭐ Favorite</div>
     ${isFile ? `<div class="ctx-item" id="ctxShare"    onclick="onCtxAction('share')">🔗 Share</div>` : ''}
     ${isFile ? `<div class="ctx-item" id="ctxDownload" onclick="onCtxAction('download')">⬇ Download</div>` : ''}
-    <div class="ctx-item ctx-danger" id="ctxDelete" onclick="onCtxAction('delete')">   🗑 Delete</div>
+    ${!isPrivate ? `<div class="ctx-item ctx-danger" id="ctxDelete" onclick="onCtxAction('delete')">   🗑 Delete</div>` : ''}
   `;
 
   // Position and show
@@ -505,10 +625,18 @@ function handleDrop(e, fid) {
   processFiles(Array.from(e.dataTransfer.files), fid);
 }
 function processFiles(fileList, folderId) {
-  if (!fileList.length) return;
-  showToast(`Uploading ${fileList.length} file${fileList.length !== 1 ? 's' : ''}…`);
+  const arr = Array.from(fileList);
+  const allowed = arr.filter(f => !f.type.startsWith('video/') && !/\.(mp4|webm|mov|avi|mkv)$/i.test(f.name));
+
+  if (allowed.length < arr.length) {
+    showToast('Video files are not supported in File Nest.', 'error');
+  }
+
+  if (!allowed.length) return;
+
+  showToast(`Uploading ${allowed.length} file${allowed.length !== 1 ? 's' : ''}…`);
   let done = 0;
-  fileList.forEach(file => {
+  allowed.forEach(file => {
     const reader = new FileReader();
     reader.onload = ev => {
       if (!state.files[folderId]) state.files[folderId] = [];
@@ -516,20 +644,28 @@ function processFiles(fileList, folderId) {
         id: genId(), name: file.name, size: file.size, type: file.type,
         dataUrl: ev.target.result, createdAt: Date.now(), favorite: false
       });
-      if (++done === fileList.length) { saveState(); render(); showToast(`${done} file${done !== 1 ? 's' : ''} uploaded!`, 'success'); }
+      if (++done === allowed.length) { saveState(); render(); showToast(`${done} file${done !== 1 ? 's' : ''} uploaded!`, 'success'); }
     };
     reader.readAsDataURL(file);
   });
+}
+function handleMobileFabClick() {
+  const folder = state.folders.find(f => f.id === state.currentView);
+  if (folder && folder.type === 'links') openAddLinkModal();
+  else triggerUpload();
 }
 
 /* ═══════════════════ FILE VIEWER ══════════════════════ */
 function openFile(folderId, fileId) {
   const file = (state.files[folderId] || []).find(f => f.id === fileId); if (!file) return;
+  if (file.isLink) {
+    window.open(file.dataUrl, '_blank');
+    return;
+  }
   currentFileForLightbox = { file, folderId };
   document.getElementById('lightboxFileName').textContent = file.name;
   const body = document.getElementById('lightboxBody');
   if (isImage(file.name)) body.innerHTML = `<img src="${file.dataUrl}" alt="${file.name}"/>`;
-  else if (isVideo(file.name)) body.innerHTML = `<video controls src="${file.dataUrl}"></video>`;
   else if (isAudio(file.name)) body.innerHTML = `<div class="lb-generic"><div class="lb-generic-icon">🎵</div><div class="lb-generic-name">${file.name}</div><audio controls src="${file.dataUrl}" style="margin-top:16px;width:100%"></audio></div>`;
   else if (isPdf(file.name)) body.innerHTML = `<iframe src="${file.dataUrl}" title="${file.name}"></iframe>`;
   else body.innerHTML = `<div class="lb-generic"><div class="lb-generic-icon">${fileTypeIcon(file.name)}</div><div class="lb-generic-name">${file.name}</div><div class="lb-generic-size">${formatBytes(file.size)}</div><div style="margin-top:12px;color:var(--text3);font-size:.8rem">Preview not available for this file type.</div><button class="btn-primary" style="margin-top:16px" onclick="downloadCurrentFile()">⬇ Download</button></div>`;
@@ -575,16 +711,19 @@ function showToast(msg, type = '') {
 
 /* ═══════════════════ KEYBOARD ═════════════════════════ */
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeLightbox(); closeModal('folderModal'); closeModal('renameModal'); closeModal('deleteModal'); closeCtxMenu(); }
+  if (e.key === 'Escape') { closeLightbox(); closeModal('folderModal'); closeModal('renameModal'); closeModal('deleteModal'); closeModal('linkModal'); closeModal('setupPinModal'); closeModal('authPinModal'); closeCtxMenu(); }
   if (e.key === 'Enter') {
     if (document.getElementById('folderModal')?.classList.contains('open')) saveFolderModal();
     if (document.getElementById('renameModal')?.classList.contains('open')) confirmRename();
+    if (document.getElementById('linkModal')?.classList.contains('open')) saveLinkModal();
+    if (document.getElementById('setupPinModal')?.classList.contains('open')) saveNewPin();
+    if (document.getElementById('authPinModal')?.classList.contains('open')) unlockVault();
   }
   if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); openCreateFolderModal(); }
   if ((e.ctrlKey || e.metaKey) && e.key === 'u') { e.preventDefault(); triggerUpload(); }
 });
 
-['folderModal', 'renameModal', 'deleteModal'].forEach(id => {
+['folderModal', 'renameModal', 'deleteModal', 'linkModal', 'setupPinModal', 'authPinModal'].forEach(id => {
   document.getElementById(id)?.addEventListener('click', e => { if (e.target.id === id) closeModal(id); });
 });
 document.getElementById('lightbox')?.addEventListener('click', e => { if (e.target.id === 'lightbox') closeLightbox(); });
@@ -609,124 +748,6 @@ function installApp() {
 function dismissInstall() { document.getElementById('installBanner')?.classList.remove('show'); }
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
-}
-
-/* ═══════════════════ AUTH LOGIC ═══════════════════════ */
-function initAuth() {
-  const authState = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
-  if (authState.loggedIn) {
-    showApp();
-  } else {
-    showAuth();
-    if (authState.registeredEmail) {
-      switchAuthView('login');
-    } else {
-      switchAuthView('signup');
-    }
-  }
-}
-
-function showAuth() {
-  document.getElementById('authOverlay').style.display = 'flex';
-  document.getElementById('appContent').style.display = 'none';
-}
-
-function showApp() {
-  document.getElementById('authOverlay').style.display = 'none';
-  document.getElementById('appContent').style.display = 'flex';
-}
-
-function switchAuthView(viewName) {
-  document.getElementById('authLoginView').style.display = 'none';
-  document.getElementById('authSignupView').style.display = 'none';
-  document.getElementById('authVerifyView').style.display = 'none';
-
-  if (viewName === 'login') document.getElementById('authLoginView').style.display = 'block';
-  else if (viewName === 'signup') document.getElementById('authSignupView').style.display = 'block';
-  else if (viewName === 'verify') document.getElementById('authVerifyView').style.display = 'block';
-}
-
-function handleSignUp() {
-  const email = document.getElementById('signupEmail').value.trim();
-  const password = document.getElementById('signupPassword').value.trim();
-  
-  if (!email || !password) return;
-
-  const authState = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
-  if (authState.registeredEmail) {
-    alert('An account already exists. Only one user is allowed.');
-    switchAuthView('login');
-    return;
-  }
-
-  // Save pending credentials, generate fake code
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  pendingSignUp = { email, password, code };
-  
-  switchAuthView('verify');
-  document.getElementById('verifyCode').value = '';
-  document.getElementById('verifyCode').focus();
-  
-  // Simulate email sending by showing an alert with the code
-  setTimeout(() => {
-    alert(`[Simulated Email] Your File Nest verification code is: ${code}`);
-  }, 1000);
-}
-
-function verifyEmail() {
-  const inputCode = document.getElementById('verifyCode').value.trim();
-  
-  if (!pendingSignUp) {
-    alert('Verification session expired. Please sign up again.');
-    switchAuthView('signup');
-    return;
-  }
-
-  if (inputCode !== pendingSignUp.code && inputCode !== '123456') { // Fallback '123456' for testing
-    alert('Invalid verification code.');
-    return;
-  }
-
-  // Registration successful
-  const newAuth = {
-    registeredEmail: pendingSignUp.email,
-    password: pendingSignUp.password, // Very insecure but works for client-side demo
-    loggedIn: true
-  };
-  localStorage.setItem(AUTH_KEY, JSON.stringify(newAuth));
-  pendingSignUp = null;
-  
-  showApp();
-}
-
-function handleLogin() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value.trim();
-  
-  const authState = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
-  
-  if (!authState.registeredEmail) {
-    alert('No account found. Please sign up.');
-    switchAuthView('signup');
-    return;
-  }
-
-  if (authState.registeredEmail === email && authState.password === password) {
-    authState.loggedIn = true;
-    localStorage.setItem(AUTH_KEY, JSON.stringify(authState));
-    showApp();
-  } else {
-    alert('Invalid email or password.');
-  }
-}
-
-function logout() {
-  const authState = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
-  authState.loggedIn = false;
-  localStorage.setItem(AUTH_KEY, JSON.stringify(authState));
-  showAuth();
-  switchAuthView('login');
-  document.getElementById('loginPassword').value = '';
 }
 
 /* ═══════════════════ INIT ════════════════════════════ */
@@ -762,5 +783,11 @@ function toggleTheme() {
   localStorage.setItem('theme', currentTheme);
 }
 
-function init() { loadState(); initTheme(); syncUIControls(); render(); initAuth(); }
+function init() { 
+  localStorage.removeItem('filenest_state');
+  loadState(); 
+  initTheme(); 
+  syncUIControls(); 
+  render(); 
+}
 init();
