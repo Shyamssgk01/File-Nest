@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>File Nest – Sign In</title>
+  <meta name="theme-color" content="#CD0000" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #EFEDE6;
+      --surface: #ffffff;
+      --surface2: #f5f3ec;
+      --border: #d6d4cc;
+      --accent: #CD0000;
+      --accent2: #f00000;
+      --text1: #0f172a;
+      --text2: #475569;
+      --text3: #64748b;
+      --success: #16a34a;
+      --error: #dc2626;
+      --radius: 14px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text1);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background-image: radial-gradient(ellipse at 20% 50%, rgba(205, 0, 0, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(240, 0, 0, 0.06) 0%, transparent 50%);
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .logo-icon {
+      font-size: 2rem;
+    }
+
+    .logo-text {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text1);
+    }
+
+    .auth-tabs {
+      display: flex;
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text2);
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text2);
+      margin-bottom: 7px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text1);
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--accent);
+    }
+
+    .form-input::placeholder {
+      color: var(--text3);
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text3);
+      padding: 0;
+      transition: color 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .password-toggle:hover {
+      color: var(--text1);
+    }
+
+    .password-wrapper {
+      position: relative;
+    }
+
+    .password-input {
+      padding-right: 64px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      margin-top: 6px;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: var(--text3);
+      font-size: 0.8rem;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .btn-google {
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text1);
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .btn-google:hover {
+      background: var(--surface2);
+      border-color: var(--accent2);
+    }
+
+    .btn-google img {
+      width: 20px;
+      height: 20px;
+    }
+
+    .error-msg {
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      color: var(--error);
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .error-msg.show {
+      display: block;
+    }
+
+    .success-msg {
+      background: rgba(74, 222, 128, 0.1);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      color: var(--success);
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .success-msg.show {
+      display: block;
+    }
+
+    .loading-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .forgot-link {
+      text-align: right;
+      margin-bottom: 16px;
+    }
+
+    .forgot-link a {
+      color: var(--accent2);
+      font-size: 0.82rem;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .forgot-link a:hover {
+      text-decoration: underline;
+    }
+
+    .storage-notice {
+      margin-top: 24px;
+      background: rgba(108, 99, 255, 0.08);
+      border: 1px solid rgba(108, 99, 255, 0.2);
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 0.82rem;
+      color: var(--text2);
+      line-height: 1.5;
+    }
+
+    .storage-notice strong {
+      color: var(--accent2);
+    }
+
+    /* Storage permission overlay */
+    .storage-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+      display: none;
+    }
+
+    .storage-overlay.show {
+      display: flex;
+    }
+
+    .storage-modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .storage-modal .big-icon {
+      font-size: 3.5rem;
+      margin-bottom: 16px;
+    }
+
+    .storage-modal h2 {
+      font-size: 1.25rem;
+      margin-bottom: 10px;
+      color: var(--text1);
+    }
+
+    .storage-modal p {
+      color: var(--text2);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .storage-options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .storage-opt-btn {
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text1);
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .storage-opt-btn:hover {
+      border-color: var(--accent);
+      background: rgba(108, 99, 255, 0.08);
+    }
+
+    .storage-opt-btn .opt-icon {
+      font-size: 1.5rem;
+    }
+
+    .storage-opt-btn .opt-label {
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+
+    .storage-opt-btn .opt-desc {
+      font-size: 0.78rem;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="auth-card">
+    <div class="logo">
+      <span class="logo-icon">🪺</span>
+      <span class="logo-text">File Nest</span>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="tab-btn active" id="tabSignIn" onclick="switchTab('signin')">Sign In</button>
+      <button class="tab-btn" id="tabSignUp" onclick="switchTab('signup')">Create Account</button>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+    <div id="successMsg" class="success-msg"></div>
+
+    <!-- SIGN IN FORM -->
+    <div id="signinForm">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="siEmail" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="password-wrapper">
+          <input class="form-input password-input" type="password" id="siPassword" placeholder="Your password"
+            onkeydown="if(event.key==='Enter') signIn()" />
+          <button type="button" class="password-toggle" onclick="togglePassword('siPassword', this)">SHOW</button>
+        </div>
+      </div>
+      <div class="forgot-link"><a onclick="forgotPassword()">Forgot password?</a></div>
+      <button class="btn-primary" id="signInBtn" onclick="signIn()">Sign In</button>
+
+      <div class="divider">or</div>
+      <button class="btn-google" onclick="signInWithGoogle()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+        Continue with Google
+      </button>
+    </div>
+
+    <!-- SIGN UP FORM -->
+    <div id="signupForm" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Display Name</label>
+        <input class="form-input" type="text" id="suName" placeholder="Your name" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="suEmail" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="password-wrapper">
+          <input class="form-input password-input" type="password" id="suPassword" placeholder="Min 6 characters"
+            onkeydown="if(event.key==='Enter') signUp()" />
+          <button type="button" class="password-toggle" onclick="togglePassword('suPassword', this)">SHOW</button>
+        </div>
+      </div>
+      <button class="btn-primary" id="signUpBtn" onclick="signUp()">Create Account</button>
+
+      <div class="divider">or</div>
+      <button class="btn-google" onclick="signInWithGoogle()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" />
+        Continue with Google
+      </button>
+    </div>
+
+    <div class="storage-notice">
+      🔒 <strong>Your privacy matters.</strong> After login, File Nest will ask where to store your files —
+      your <strong>device storage</strong> (private, free, offline) or a cloud backup. Your data never
+      leaves your device unless you choose cloud backup.
+    </div>
+  </div>
+
+  <!-- STORAGE PERMISSION OVERLAY -->
+  <div class="storage-overlay" id="storageOverlay">
+    <div class="storage-modal">
+      <div class="big-icon">💾</div>
+      <h2>Where should File Nest store your files?</h2>
+      <p>
+        Your files can be stored privately on <strong>this device</strong>, or synced to the cloud.
+        You can change this later in settings.
+      </p>
+      <div class="storage-options">
+        <button class="storage-opt-btn" onclick="chooseStorage('opfs')">
+          <span class="opt-icon">🖥️</span>
+          <div>
+            <div class="opt-label">This Device (Recommended)</div>
+            <div class="opt-desc">Files stored privately in browser storage. Free, unlimited, works offline. No one else
+              can access them.</div>
+          </div>
+        </button>
+        <button class="storage-opt-btn" onclick="chooseStorage('localstorage')">
+          <span class="opt-icon">📦</span>
+          <div>
+            <div class="opt-label">Browser Storage</div>
+            <div class="opt-desc">Stored in your browser's local storage. Simpler but limited to ~50MB. Cleared if you
+              clear browser data.</div>
+          </div>
+        </button>
+        <button class="storage-opt-btn" onclick="chooseStorage('cloud')">
+          <span class="opt-icon">☁️</span>
+          <div>
+            <div class="opt-label">Cloud Backup (Firebase)</div>
+            <div class="opt-desc">Files synced across devices via Firebase. Requires internet. Free tier: 1GB storage.
+            </div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
+      signInWithPopup,
+      GoogleAuthProvider,
+      sendPasswordResetEmail,
+      updateProfile,
+      onAuthStateChanged
+    } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+    // ── 🔧 REPLACE WITH YOUR OWN FIREBASE CONFIG ──────────────────────────
+    // Go to: https://console.firebase.google.com → Your Project → Project Settings
+    const firebaseConfig = {
+      apiKey: "AIzaSyA_lviXmugTcluWwHuTNIdJxzpbGWcI-So",
+      authDomain: "file-nest-bd950.firebaseapp.com",
+      projectId: "file-nest-bd950",
+      storageBucket: "file-nest-bd950.firebasestorage.app",
+      messagingSenderId: "233200355753",
+      appId: "1:233200355753:web:295f3e71d38dbe3a6e9cb8"
+    };
+    // ─────────────────────────────────────────────────────────────────────
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    // Check if already logged in
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        // User already signed in — check if storage preference is set
+        const storagePref = localStorage.getItem('filenest_storage_pref');
+        if (!storagePref) {
+          document.getElementById('storageOverlay').classList.add('show');
+        } else {
+          window.location.href = 'index.html';
+        }
+      }
+    });
+
+    function showError(msg) {
+      const el = document.getElementById('errorMsg');
+      el.textContent = msg;
+      el.classList.add('show');
+      document.getElementById('successMsg').classList.remove('show');
+    }
+    function showSuccess(msg) {
+      const el = document.getElementById('successMsg');
+      el.textContent = msg;
+      el.classList.add('show');
+      document.getElementById('errorMsg').classList.remove('show');
+    }
+    function setLoading(btnId, loading) {
+      const btn = document.getElementById(btnId);
+      if (loading) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner"></span> Please wait…';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = btnId === 'signInBtn' ? 'Sign In' : 'Create Account';
+      }
+    }
+    function handleAuthSuccess(user) {
+      localStorage.setItem('filenest_user', JSON.stringify({
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL
+      }));
+      const storagePref = localStorage.getItem('filenest_storage_pref');
+      if (!storagePref) {
+        document.getElementById('storageOverlay').classList.add('show');
+      } else {
+        window.location.href = 'index.html';
+      }
+    }
+    function friendlyError(code) {
+      const map = {
+        'auth/user-not-found': 'No account found with this email.',
+        'auth/wrong-password': 'Incorrect password.',
+        'auth/invalid-email': 'Please enter a valid email address.',
+        'auth/email-already-in-use': 'An account with this email already exists.',
+        'auth/weak-password': 'Password must be at least 6 characters.',
+        'auth/too-many-requests': 'Too many attempts. Please try again later.',
+        'auth/popup-closed-by-user': 'Sign-in popup was closed. Please try again.',
+        'auth/invalid-credential': 'Incorrect email or password.',
+      };
+      return map[code] || `Something went wrong: ${code || 'Unknown error'}`;
+    }
+
+    window.togglePassword = (inputId, btn) => {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'HIDE';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'SHOW';
+      }
+    };
+
+    window.switchTab = (tab) => {
+      document.getElementById('signinForm').style.display = tab === 'signin' ? 'block' : 'none';
+      document.getElementById('signupForm').style.display = tab === 'signup' ? 'block' : 'none';
+      document.getElementById('tabSignIn').classList.toggle('active', tab === 'signin');
+      document.getElementById('tabSignUp').classList.toggle('active', tab === 'signup');
+      document.getElementById('errorMsg').classList.remove('show');
+      document.getElementById('successMsg').classList.remove('show');
+    };
+
+    window.signIn = async () => {
+      const email = document.getElementById('siEmail').value.trim();
+      const password = document.getElementById('siPassword').value;
+      if (!email || !password) { showError('Please enter your email and password.'); return; }
+      setLoading('signInBtn', true);
+      try {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        handleAuthSuccess(cred.user);
+      } catch (err) {
+        showError(friendlyError(err.code));
+        setLoading('signInBtn', false);
+      }
+    };
+
+    window.signUp = async () => {
+      const name = document.getElementById('suName').value.trim();
+      const email = document.getElementById('suEmail').value.trim();
+      const password = document.getElementById('suPassword').value;
+      if (!email || !password) { showError('Please fill in all fields.'); return; }
+      if (password.length < 6) { showError('Password must be at least 6 characters.'); return; }
+      setLoading('signUpBtn', true);
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        if (name) await updateProfile(cred.user, { displayName: name });
+        handleAuthSuccess(cred.user);
+      } catch (err) {
+        showError(friendlyError(err.code));
+        setLoading('signUpBtn', false);
+      }
+    };
+
+    window.signInWithGoogle = async () => {
+      try {
+        const cred = await signInWithPopup(auth, provider);
+        handleAuthSuccess(cred.user);
+      } catch (err) {
+        showError(friendlyError(err.code));
+      }
+    };
+
+    window.forgotPassword = async () => {
+      const email = document.getElementById('siEmail').value.trim();
+      if (!email) { showError('Enter your email address first, then click Forgot Password.'); return; }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showSuccess(`Password reset email sent to ${email}. Check your inbox!`);
+      } catch (err) {
+        showError(friendlyError(err.code));
+      }
+    };
+
+    window.chooseStorage = (pref) => {
+      localStorage.setItem('filenest_storage_pref', pref);
+      document.getElementById('storageOverlay').classList.remove('show');
+      window.location.href = 'index.html';
+    };
+  </script>
+</body>
+
+</html>
