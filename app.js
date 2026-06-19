@@ -242,6 +242,7 @@ function render() {
   document.querySelectorAll('.sidebar-folder-item').forEach(el => {
     el.classList.toggle('active', el.dataset.fid === state.currentView);
   });
+  loadOpfsThumbnails();
 }
 
 function renderHome(C) {
@@ -314,6 +315,25 @@ function renderFavorites(C) {
       : `<div style="color:var(--text3);font-size:.85rem;padding:12px 0">No favorite files yet.</div>`}`;
 }
 
+/* ── OPFS thumbnail loader ──────────────────────────────────
+   Photos stored on-device (OPFS) only keep a '__opfs__' marker
+   in state, not the actual image bytes. fileCard() renders a
+   placeholder with data-opfs-thumb="<fileId>" for these; this
+   function fetches the real data and swaps in a real <img>.
+─────────────────────────────────────────────────────────────*/
+async function loadOpfsThumbnails() {
+  const placeholders = document.querySelectorAll('[data-opfs-thumb]');
+  for (const el of placeholders) {
+    const fileId = el.dataset.opfsThumb;
+    try {
+      const dataUrl = await opfsReadFile(fileId);
+      if (dataUrl && el.isConnected) {
+        el.outerHTML = `<img class="item-thumbnail" src="${dataUrl}" alt="" loading="lazy"/>`;
+      }
+    } catch (e) { /* leave placeholder icon if read fails */ }
+  }
+}
+
 /* ── Cards ──────────────────────────────────────────────── */
 function folderCard(f) {
   const fc = (state.files[f.id] || []).length;
@@ -335,9 +355,11 @@ function folderCard(f) {
 
 function fileCard(f, folderId) {
   const isImg = isImage(f.name) && !f.isLink;
-  const icon = isImg && f.dataUrl
+  const icon = isImg && f.dataUrl && f.dataUrl !== '__opfs__'
     ? `<img class="item-thumbnail" src="${f.dataUrl}" alt="${f.name}" loading="lazy"/>`
-    : `<div class="item-icon">${f.isLink ? '🔗' : fileTypeIcon(f.name)}</div>`;
+    : isImg && f.dataUrl === '__opfs__'
+      ? `<div class="item-icon" data-opfs-thumb="${f.id}">🖼️</div>`
+      : `<div class="item-icon">${f.isLink ? '🔗' : fileTypeIcon(f.name)}</div>`;
   const ext = f.name.split('.').pop().toUpperCase();
   return `<div class="item-card"
        onclick="openFile('${folderId}','${f.id}')"
